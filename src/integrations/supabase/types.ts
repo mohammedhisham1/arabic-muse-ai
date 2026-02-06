@@ -44,6 +44,44 @@ export type Database = {
         }
         Relationships: []
       }
+      teacher_interventions: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          intervention_type: string
+          student_id: string
+          teacher_id: string
+          writing_id: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          intervention_type?: string
+          student_id: string
+          teacher_id: string
+          writing_id?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          intervention_type?: string
+          student_id?: string
+          teacher_id?: string
+          writing_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "teacher_interventions_writing_id_fkey"
+            columns: ["writing_id"]
+            isOneToOne: false
+            referencedRelation: "writings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       teacher_students: {
         Row: {
           assigned_at: string

@@ -41,3 +41,13 @@ export interface TeacherStudent {
   student_id: string;
   assigned_at: string;
 }
+
+export interface TeacherIntervention {
+  id: string;
+  teacher_id: string;
+  student_id: string;
+  writing_id: string | null;
+  intervention_type: string;
+  content: string;
+  created_at: string;
+}
