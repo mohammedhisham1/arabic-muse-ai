@@ -1,9 +1,18 @@
-import { Link, useLocation } from 'react-router-dom';
-import { BookOpen, PenTool } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { BookOpen, PenTool, LogIn, LogOut, LayoutDashboard, Award, Feather } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
 
 const Header = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, role, signOut } = useAuth();
   const isHome = location.pathname === '/';
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-md">
@@ -15,17 +24,58 @@ const Header = () => {
           <span className="font-amiri text-2xl font-bold text-foreground">قلم</span>
         </Link>
 
-        {!isHome && (
-          <nav className="flex items-center gap-6">
+        <nav className="flex items-center gap-3">
+          {!isHome && (
             <Link
               to="/"
               className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
               <BookOpen className="h-4 w-4" />
-              الرئيسية
+              <span className="hidden sm:inline">الرئيسية</span>
             </Link>
-          </nav>
-        )}
+          )}
+
+          {user && role === 'student' && (
+            <>
+              <Link
+                to="/creative-writing"
+                className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <Feather className="h-4 w-4" />
+                <span className="hidden sm:inline">الكتابة</span>
+              </Link>
+              <Link
+                to="/final-outputs"
+                className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <Award className="h-4 w-4" />
+                <span className="hidden sm:inline">إنجازاتي</span>
+              </Link>
+            </>
+          )}
+
+          {user && role === 'teacher' && (
+            <Link
+              to="/teacher-dashboard"
+              className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <LayoutDashboard className="h-4 w-4" />
+              <span className="hidden sm:inline">لوحة التحكم</span>
+            </Link>
+          )}
+
+          {user ? (
+            <Button variant="ghost" size="sm" onClick={handleSignOut} className="gap-1.5">
+              <LogOut className="h-4 w-4" />
+              <span className="hidden sm:inline">خروج</span>
+            </Button>
+          ) : (
+            <Button variant="default" size="sm" onClick={() => navigate('/auth')} className="gap-1.5">
+              <LogIn className="h-4 w-4" />
+              دخول
+            </Button>
+          )}
+        </nav>
       </div>
     </header>
   );

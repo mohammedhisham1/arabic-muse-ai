@@ -7,15 +7,30 @@ import { Button } from '@/components/ui/button';
 import Header from '@/components/Header';
 import { useWriter } from '@/contexts/WriterContext';
 import { styleData, styleNames } from '@/data/styles';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
 import type { WritingStyle } from '@/types/writer';
 
 const StyleReport = () => {
   const { profile } = useWriter();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
     if (!profile) navigate('/style-test');
   }, [profile, navigate]);
+
+  // Save writing style to profile when logged in
+  useEffect(() => {
+    if (profile && user) {
+      const styleName = styleData[profile.style].name;
+      (supabase as any)
+        .from('profiles')
+        .update({ writing_style: styleName })
+        .eq('user_id', user.id)
+        .then(() => {});
+    }
+  }, [profile, user]);
 
   if (!profile) return null;
 
