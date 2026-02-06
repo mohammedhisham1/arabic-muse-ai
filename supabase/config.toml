@@ -2,3 +2,6 @@ project_id = "tzuwzsjvfqsghvkkdtnn"
 
 [functions.analyze-writing]
 verify_jwt = false
+
+[functions.suggest-emotional]
+verify_jwt = false

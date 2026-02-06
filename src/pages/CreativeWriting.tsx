@@ -4,6 +4,8 @@ import { PenTool, Send, Sparkles, Target, Heart, Fingerprint, Lightbulb, Loader2
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import Header from '@/components/Header';
+import ScoreGauge from '@/components/ScoreGauge';
+import EmotionalSuggestions from '@/components/EmotionalSuggestions';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -53,7 +55,6 @@ const CreativeWriting = () => {
 
     setSaving(true);
     try {
-      // Save writing
       const { data: writingData, error: writeErr } = await (supabase as any)
         .from('writings')
         .insert({ user_id: user!.id, title, content, style: writingStyle })
@@ -66,7 +67,6 @@ const CreativeWriting = () => {
       toast.success('تم حفظ النص بنجاح!');
       setSaving(false);
 
-      // Analyze with AI
       setAnalyzing(true);
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-writing`,
@@ -119,10 +119,9 @@ const CreativeWriting = () => {
     loadEvaluation(w.id);
   };
 
-  const scoreColor = (score: number) => {
-    if (score >= 7) return 'text-primary';
-    if (score >= 4) return 'text-accent';
-    return 'text-destructive';
+  const handleApplySuggestion = (suggestion: string) => {
+    setContent(prev => prev + ' ' + suggestion);
+    toast.success('تم إضافة الاقتراح إلى النص');
   };
 
   return (
@@ -136,50 +135,53 @@ const CreativeWriting = () => {
             المرحلة الخامسة — الكتابة الإبداعية
           </span>
           <h1 className="mt-4 font-amiri text-3xl font-bold text-foreground">محرر الكتابة الذكي</h1>
+          <p className="mt-2 text-muted-foreground">اكتب نصك الإبداعي واحصل على تحليل فوري واقتراحات لغوية عاطفية</p>
         </div>
 
-        <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-3">
+        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-4">
           {/* Sidebar - Previous writings */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             className="lg:col-span-1"
           >
-            <h3 className="mb-4 font-amiri text-lg font-bold text-foreground">كتاباتك السابقة</h3>
-            <div className="space-y-2 max-h-96 overflow-y-auto">
-              {writings.length === 0 && (
-                <p className="text-sm text-muted-foreground">لم تكتب شيئًا بعد. ابدأ الآن!</p>
-              )}
-              {writings.map(w => (
-                <button
-                  key={w.id}
-                  onClick={() => selectExistingWriting(w)}
-                  className={`w-full rounded-lg border p-3 text-right transition-all ${
-                    selectedWriting === w.id
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border bg-card hover:border-primary/30'
-                  }`}
-                >
-                  <p className="text-sm font-bold text-foreground truncate">{w.title}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {new Date(w.created_at).toLocaleDateString('ar')}
-                  </p>
-                </button>
-              ))}
-            </div>
+            <div className="rounded-2xl border border-border bg-card p-5">
+              <h3 className="mb-4 font-amiri text-lg font-bold text-foreground">كتاباتك السابقة</h3>
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {writings.length === 0 && (
+                  <p className="text-sm text-muted-foreground">لم تكتب شيئًا بعد. ابدأ الآن!</p>
+                )}
+                {writings.map(w => (
+                  <button
+                    key={w.id}
+                    onClick={() => selectExistingWriting(w)}
+                    className={`w-full rounded-lg border p-3 text-right transition-all ${
+                      selectedWriting === w.id
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border bg-background hover:border-primary/30'
+                    }`}
+                  >
+                    <p className="text-sm font-bold text-foreground truncate">{w.title}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {new Date(w.created_at).toLocaleDateString('ar')}
+                    </p>
+                  </button>
+                ))}
+              </div>
 
-            <Button
-              variant="outline"
-              className="mt-4 w-full"
-              onClick={() => {
-                setTitle('');
-                setContent('');
-                setSelectedWriting(null);
-                setEvaluation(null);
-              }}
-            >
-              كتابة جديدة
-            </Button>
+              <Button
+                variant="outline"
+                className="mt-4 w-full"
+                onClick={() => {
+                  setTitle('');
+                  setContent('');
+                  setSelectedWriting(null);
+                  setEvaluation(null);
+                }}
+              >
+                كتابة جديدة
+              </Button>
+            </div>
           </motion.div>
 
           {/* Main Editor */}
@@ -188,40 +190,47 @@ const CreativeWriting = () => {
             animate={{ opacity: 1, y: 0 }}
             className="lg:col-span-2 space-y-6"
           >
-            <div>
-              <label className="mb-2 block text-sm font-bold text-foreground">عنوان النص</label>
-              <Input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="اكتب عنوانًا إبداعيًا..."
-                className="text-lg"
-              />
-            </div>
+            <div className="rounded-2xl border border-border bg-card p-6 space-y-5">
+              <div>
+                <label className="mb-2 block text-sm font-bold text-foreground">عنوان النص</label>
+                <Input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="اكتب عنوانًا إبداعيًا..."
+                  className="text-lg"
+                />
+              </div>
 
-            <div>
-              <label className="mb-2 block text-sm font-bold text-foreground">النص الإبداعي</label>
-              <textarea
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="اكتب نصك الإبداعي هنا... دع خيالك ينطلق بحرية"
-                className="min-h-[250px] w-full rounded-xl border border-input bg-background p-4 text-base leading-[2] text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring resize-y"
-              />
-              <p className="mt-1 text-xs text-muted-foreground">
-                {content.length} حرف · {content.split(/\s+/).filter(Boolean).length} كلمة
-              </p>
-            </div>
+              <div>
+                <label className="mb-2 block text-sm font-bold text-foreground">النص الإبداعي</label>
+                <textarea
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder="اكتب نصك الإبداعي هنا... دع خيالك ينطلق بحرية"
+                  className="min-h-[280px] w-full rounded-xl border border-input bg-background p-4 text-base leading-[2] text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring resize-y"
+                />
+                <div className="mt-1 flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">
+                    {content.length} حرف · {content.split(/\s+/).filter(Boolean).length} كلمة
+                  </p>
+                  {writingStyle && (
+                    <span className="text-xs rounded-full bg-primary/10 px-3 py-1 text-primary font-medium">
+                      أسلوبك: {writingStyle}
+                    </span>
+                  )}
+                </div>
+              </div>
 
-            <div className="flex gap-3">
               <Button
                 variant="hero"
                 onClick={handleSaveAndAnalyze}
                 disabled={saving || analyzing || !title.trim() || !content.trim()}
-                className="gap-2"
+                className="gap-2 w-full"
               >
                 {analyzing ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    جارٍ التحليل...
+                    جارٍ التحليل بالذكاء الاصطناعي...
                   </>
                 ) : (
                   <>
@@ -244,22 +253,11 @@ const CreativeWriting = () => {
                   تقرير التقييم الفوري
                 </h3>
 
-                {/* Scores */}
-                <div className="grid gap-4 sm:grid-cols-3">
-                  {[
-                    { label: 'دقة الكلمات', value: evaluation.word_precision, icon: Target },
-                    { label: 'عمق المشاعر', value: evaluation.feeling_depth, icon: Heart },
-                    { label: 'الهوية اللغوية', value: evaluation.linguistic_identity, icon: Fingerprint },
-                  ].map(({ label, value, icon: Icon }) => (
-                    <div key={label} className="rounded-xl border border-border bg-background p-4 text-center">
-                      <Icon className="mx-auto h-6 w-6 text-muted-foreground mb-2" />
-                      <p className="text-xs text-muted-foreground mb-1">{label}</p>
-                      <p className={`text-3xl font-bold ${scoreColor(value)}`}>
-                        {Number(value).toFixed(1)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">/10</p>
-                    </div>
-                  ))}
+                {/* Score Gauges */}
+                <div className="flex flex-wrap justify-center gap-8">
+                  <ScoreGauge label="دقة الكلمات" value={evaluation.word_precision} icon={Target} />
+                  <ScoreGauge label="عمق المشاعر" value={evaluation.feeling_depth} icon={Heart} />
+                  <ScoreGauge label="الهوية اللغوية" value={evaluation.linguistic_identity} icon={Fingerprint} />
                 </div>
 
                 {/* Feedback */}
@@ -289,6 +287,19 @@ const CreativeWriting = () => {
                 )}
               </motion.div>
             )}
+          </motion.div>
+
+          {/* Right Sidebar - Emotional Suggestions */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="lg:col-span-1"
+          >
+            <EmotionalSuggestions
+              content={content}
+              style={writingStyle}
+              onApplySuggestion={handleApplySuggestion}
+            />
           </motion.div>
         </div>
       </main>

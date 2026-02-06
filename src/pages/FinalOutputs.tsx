@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Award, BookOpen, Target, Heart, Fingerprint, TrendingUp, PenTool, BarChart3 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { Award, BookOpen, Target, Heart, Fingerprint, TrendingUp, PenTool, BarChart3, Star, Sparkles } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar, Legend } from 'recharts';
 import { Button } from '@/components/ui/button';
 import Header from '@/components/Header';
 import { supabase } from '@/integrations/supabase/client';
@@ -59,14 +59,42 @@ const FinalOutputs = () => {
   const chartData = writings.map(w => {
     const evaluation = evaluations.find(e => e.writing_id === w.id);
     return {
-      name: w.title.slice(0, 15) + (w.title.length > 15 ? '...' : ''),
+      name: w.title.slice(0, 12) + (w.title.length > 12 ? '...' : ''),
       'دقة الكلمات': evaluation ? Number(evaluation.word_precision) : 0,
       'عمق المشاعر': evaluation ? Number(evaluation.feeling_depth) : 0,
       'الهوية اللغوية': evaluation ? Number(evaluation.linguistic_identity) : 0,
     };
   });
 
+  const radarData = [
+    { skill: 'دقة الكلمات', value: avgScore('word_precision'), fullMark: 10 },
+    { skill: 'عمق المشاعر', value: avgScore('feeling_depth'), fullMark: 10 },
+    { skill: 'الهوية اللغوية', value: avgScore('linguistic_identity'), fullMark: 10 },
+  ];
+
   const overallAvg = (avgScore('word_precision') + avgScore('feeling_depth') + avgScore('linguistic_identity')) / 3;
+
+  const getLevel = (avg: number) => {
+    if (avg >= 8) return { label: 'متميز', emoji: '🏆', color: 'text-primary' };
+    if (avg >= 6) return { label: 'متقدم', emoji: '⭐', color: 'text-primary' };
+    if (avg >= 4) return { label: 'متطور', emoji: '📈', color: 'text-accent' };
+    return { label: 'مبتدئ', emoji: '🌱', color: 'text-muted-foreground' };
+  };
+
+  const level = getLevel(overallAvg);
+
+  // Calculate improvement trend
+  const getImprovement = () => {
+    if (evaluations.length < 2) return null;
+    const sorted = [...evaluations].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    const firstHalf = sorted.slice(0, Math.ceil(sorted.length / 2));
+    const secondHalf = sorted.slice(Math.ceil(sorted.length / 2));
+    const avgFirst = firstHalf.reduce((s, e) => s + (Number(e.word_precision) + Number(e.feeling_depth) + Number(e.linguistic_identity)) / 3, 0) / firstHalf.length;
+    const avgSecond = secondHalf.reduce((s, e) => s + (Number(e.word_precision) + Number(e.feeling_depth) + Number(e.linguistic_identity)) / 3, 0) / secondHalf.length;
+    return avgSecond - avgFirst;
+  };
+
+  const improvement = getImprovement();
 
   return (
     <div className="min-h-screen bg-background">
@@ -76,7 +104,7 @@ const FinalOutputs = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="mx-auto max-w-4xl"
+          className="mx-auto max-w-5xl"
         >
           <div className="mb-10 text-center">
             <span className="inline-flex items-center gap-2 rounded-full bg-accent/10 px-4 py-1.5 text-sm font-medium text-accent-foreground">
@@ -90,6 +118,25 @@ const FinalOutputs = () => {
               {profile?.full_name ? `مرحبًا ${profile.full_name}، ` : ''}إليك تقرير شامل عن تطورك في الكتابة الإبداعية
             </p>
           </div>
+
+          {/* Level Badge */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.2 }}
+            className="mx-auto mb-10 max-w-md rounded-2xl border-2 border-primary/30 bg-gradient-to-b from-primary/5 to-card p-8 text-center"
+          >
+            <span className="text-5xl">{level.emoji}</span>
+            <h2 className={`mt-3 font-amiri text-2xl font-bold ${level.color}`}>
+              المستوى: {level.label}
+            </h2>
+            <p className="mt-1 text-4xl font-bold text-foreground">{overallAvg.toFixed(1)}<span className="text-lg text-muted-foreground">/10</span></p>
+            {improvement !== null && (
+              <p className={`mt-2 text-sm font-medium ${improvement >= 0 ? 'text-primary' : 'text-destructive'}`}>
+                {improvement >= 0 ? '↑' : '↓'} تغير {Math.abs(improvement).toFixed(1)} نقطة عن النصف الأول
+              </p>
+            )}
+          </motion.div>
 
           {/* Stats Overview */}
           <div className="grid gap-6 sm:grid-cols-4 mb-8">
@@ -113,55 +160,95 @@ const FinalOutputs = () => {
             ))}
           </div>
 
-          {/* Final Outcomes */}
-          <div className="grid gap-6 sm:grid-cols-3 mb-8">
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="rounded-2xl border border-primary/20 bg-emerald-light/30 p-6"
-            >
-              <PenTool className="h-8 w-8 text-primary mb-3" />
-              <h3 className="font-amiri text-lg font-bold text-foreground">التعلم الفردي</h3>
-              <p className="text-sm text-muted-foreground mt-2">
-                {profile?.writing_style
-                  ? `أسلوبك الكتابي: ${profile.writing_style}. تم تخصيص مسار التعلم وفقًا لخصائصك الإبداعية الفريدة.`
-                  : 'اكتشف أسلوبك الكتابي عبر اختبار الأسلوب لتخصيص تجربتك التعليمية.'}
-              </p>
-            </motion.div>
+          {/* Radar Chart + Final Outcomes */}
+          <div className="grid gap-6 lg:grid-cols-2 mb-8">
+            {/* Radar Chart */}
+            {evaluations.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="rounded-2xl border border-border bg-card p-6"
+              >
+                <h3 className="mb-4 font-amiri text-xl font-bold text-foreground flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 text-accent" />
+                  خريطة المهارات
+                </h3>
+                <ResponsiveContainer width="100%" height={280}>
+                  <RadarChart data={radarData}>
+                    <PolarGrid stroke="hsl(var(--border))" />
+                    <PolarAngleAxis
+                      dataKey="skill"
+                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 12 }}
+                    />
+                    <PolarRadiusAxis
+                      angle={90}
+                      domain={[0, 10]}
+                      tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 10 }}
+                    />
+                    <Radar
+                      name="مهاراتك"
+                      dataKey="value"
+                      stroke="hsl(var(--primary))"
+                      fill="hsl(var(--primary))"
+                      fillOpacity={0.2}
+                      strokeWidth={2}
+                    />
+                  </RadarChart>
+                </ResponsiveContainer>
+              </motion.div>
+            )}
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 }}
-              className="rounded-2xl border border-accent/20 bg-gold-light/30 p-6"
-            >
-              <TrendingUp className="h-8 w-8 text-accent mb-3" />
-              <h3 className="font-amiri text-lg font-bold text-foreground">تحسن الكتابة الإبداعية</h3>
-              <p className="text-sm text-muted-foreground mt-2">
-                {evaluations.length > 0
-                  ? `متوسط أدائك العام: ${overallAvg.toFixed(1)}/10. ${overallAvg >= 7 ? 'أداء متميز!' : overallAvg >= 5 ? 'تقدم جيد، واصل التطور!' : 'بداية رائعة، استمر في التدرب!'}`
-                  : 'ابدأ بكتابة نصوص إبداعية للحصول على تقييمات الذكاء الاصطناعي.'}
-              </p>
-            </motion.div>
+            {/* Final Outcomes */}
+            <div className="space-y-4">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="rounded-2xl border border-primary/20 bg-emerald-light/30 p-6"
+              >
+                <PenTool className="h-7 w-7 text-primary mb-3" />
+                <h3 className="font-amiri text-lg font-bold text-foreground">التعلم الفردي</h3>
+                <p className="text-sm text-muted-foreground mt-2">
+                  {profile?.writing_style
+                    ? `أسلوبك الكتابي: ${profile.writing_style}. تم تخصيص مسار التعلم وفقًا لخصائصك الإبداعية الفريدة.`
+                    : 'اكتشف أسلوبك الكتابي عبر اختبار الأسلوب لتخصيص تجربتك التعليمية.'}
+                </p>
+              </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.5 }}
-              className="rounded-2xl border border-border bg-card p-6"
-            >
-              <BarChart3 className="h-8 w-8 text-muted-foreground mb-3" />
-              <h3 className="font-amiri text-lg font-bold text-foreground">الوعي اللغوي الذاتي</h3>
-              <p className="text-sm text-muted-foreground mt-2">
-                {evaluations.length > 0
-                  ? 'تقارير الذكاء الاصطناعي ساعدتك على فهم نقاط قوتك وفرص التحسين في الكتابة العربية الإبداعية.'
-                  : 'ستحصل على تحليلات مفصلة لتعزيز وعيك بأسلوبك الكتابي.'}
-              </p>
-            </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+                className="rounded-2xl border border-accent/20 bg-gold-light/30 p-6"
+              >
+                <TrendingUp className="h-7 w-7 text-accent mb-3" />
+                <h3 className="font-amiri text-lg font-bold text-foreground">تحسن الكتابة الإبداعية</h3>
+                <p className="text-sm text-muted-foreground mt-2">
+                  {evaluations.length > 0
+                    ? `متوسط أدائك العام: ${overallAvg.toFixed(1)}/10. ${overallAvg >= 7 ? 'أداء متميز!' : overallAvg >= 5 ? 'تقدم جيد، واصل التطور!' : 'بداية رائعة، استمر في التدرب!'}`
+                    : 'ابدأ بكتابة نصوص إبداعية للحصول على تقييمات الذكاء الاصطناعي.'}
+                </p>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="rounded-2xl border border-border bg-card p-6"
+              >
+                <Star className="h-7 w-7 text-accent mb-3" />
+                <h3 className="font-amiri text-lg font-bold text-foreground">الوعي اللغوي الذاتي</h3>
+                <p className="text-sm text-muted-foreground mt-2">
+                  {evaluations.length > 0
+                    ? 'تقارير الذكاء الاصطناعي ساعدتك على فهم نقاط قوتك وفرص التحسين في الكتابة العربية الإبداعية.'
+                    : 'ستحصل على تحليلات مفصلة لتعزيز وعيك بأسلوبك الكتابي.'}
+                </p>
+              </motion.div>
+            </div>
           </div>
 
-          {/* Progress Chart */}
+          {/* Progress Bar Chart */}
           {chartData.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -169,7 +256,10 @@ const FinalOutputs = () => {
               transition={{ delay: 0.6 }}
               className="rounded-2xl border border-border bg-card p-6 mb-8"
             >
-              <h3 className="mb-4 font-amiri text-xl font-bold text-foreground">تطور مهاراتك</h3>
+              <h3 className="mb-4 font-amiri text-xl font-bold text-foreground flex items-center gap-2">
+                <BarChart3 className="h-5 w-5 text-primary" />
+                تطور مهاراتك عبر الكتابات
+              </h3>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -182,6 +272,7 @@ const FinalOutputs = () => {
                       borderRadius: '8px',
                     }}
                   />
+                  <Legend />
                   <Bar dataKey="دقة الكلمات" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="عمق المشاعر" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="الهوية اللغوية" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} />
