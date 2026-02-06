@@ -1,1 +1,4 @@
 project_id = "tzuwzsjvfqsghvkkdtnn"
+
+[functions.analyze-writing]
+verify_jwt = false
