@@ -1,84 +1,93 @@
-import { Question } from '@/types/writer';
+import { Statement, StatementGroup, WritingStyle } from '@/types/writer';
 
-export const questions: Question[] = [
-  {
-    id: 1,
-    text: 'عندما تقرأ نصًا أدبيًا، ما أول ما يلفت انتباهك؟',
-    options: [
-      { text: 'العواطف والمشاعر المتدفقة في النص', scores: { emotional: 2, introspective: 1 } },
-      { text: 'البناء المنطقي والتسلسل الواضح للأفكار', scores: { logical: 2, reasoning: 1 } },
-      { text: 'التحليل العميق للشخصيات ودوافعها', scores: { analytical: 2, detailed: 1 } },
-      { text: 'الأوصاف الحية والصور البصرية الغنية', scores: { descriptive: 2, emotional: 1 } },
-    ],
-  },
-  {
-    id: 2,
-    text: 'كيف تفضل بناء أفكارك عند الكتابة؟',
-    options: [
-      { text: 'أبدأ بمشاعري وأترك القلم يتدفق بحرية', scores: { emotional: 2, reflective: 1 } },
-      { text: 'أرتب أفكاري بتسلسل منطقي واضح ومحكم', scores: { logical: 2, rationalistic: 1 } },
-      { text: 'أحلل كل فكرة بعمق قبل الانتقال للتالية', scores: { analytical: 2, reasoning: 1 } },
-      { text: 'أستخدم الحجج والبراهين العقلية لدعم كل نقطة', scores: { rationalistic: 2, logical: 1 } },
-    ],
-  },
-  {
-    id: 3,
-    text: 'ما نوع النصوص التي تستمتع بقراءتها أكثر؟',
-    options: [
-      { text: 'النصوص الوصفية الغنية بالصور والتفاصيل الحسية', scores: { descriptive: 2, detailed: 1 } },
-      { text: 'النصوص التأملية التي تغوص في أعماق النفس', scores: { introspective: 2, reflective: 1 } },
-      { text: 'النصوص التي تعتمد على الاستدلال والاستنتاج', scores: { reasoning: 2, analytical: 1 } },
-      { text: 'النصوص المفصلة والشاملة التي لا تترك شاردة', scores: { detailed: 2, descriptive: 1 } },
-    ],
-  },
-  {
-    id: 4,
-    text: 'عندما تريد إقناع شخص ما بوجهة نظرك، ماذا تستخدم؟',
-    options: [
-      { text: 'العواطف والمشاعر المؤثرة التي تلامس القلب', scores: { emotional: 2, descriptive: 1 } },
-      { text: 'الحجج العقلانية المتماسكة والمنظمة', scores: { rationalistic: 2, logical: 1 } },
-      { text: 'الأدلة والبراهين المبنية على الاستدلال', scores: { reasoning: 2, rationalistic: 1 } },
-      { text: 'التحليل المفصل والشامل لجميع جوانب الموقف', scores: { analytical: 2, detailed: 1 } },
-    ],
-  },
-  {
-    id: 5,
-    text: 'كيف تصف أسلوبك في التفكير بشكل عام؟',
-    options: [
-      { text: 'تأملي وعميق، أغوص في المعاني الداخلية', scores: { introspective: 2, emotional: 1 } },
-      { text: 'منطقي ومنظم، أتبع خطوات واضحة', scores: { logical: 2, rationalistic: 1 } },
-      { text: 'تفصيلي ودقيق، أهتم بكل التفاصيل', scores: { detailed: 2, analytical: 1 } },
-      { text: 'انعكاسي ومراجع، أعيد التفكير في تجاربي', scores: { reflective: 2, introspective: 1 } },
-    ],
-  },
-  {
-    id: 6,
-    text: 'ما الذي يجعل النص الأدبي مميزًا ولا يُنسى في نظرك؟',
-    options: [
-      { text: 'الصور البصرية والأوصاف الحية التي تنقلك إلى المكان', scores: { descriptive: 2, emotional: 1 } },
-      { text: 'العمق الفكري والتأمل الفلسفي في الحياة', scores: { introspective: 2, reflective: 1 } },
-      { text: 'الاستنتاجات الذكية والمفاجآت في الحبكة', scores: { reasoning: 2, logical: 1 } },
-      { text: 'الشمولية والتفصيل في تناول الموضوع', scores: { detailed: 2, analytical: 1 } },
-    ],
-  },
-  {
-    id: 7,
-    text: 'عندما تواجه موقفًا صعبًا في حياتك، كيف تتعامل معه؟',
-    options: [
-      { text: 'أستمع لمشاعري أولاً وأعبّر عنها بصدق', scores: { emotional: 2, reflective: 1 } },
-      { text: 'أحلل الموقف من جميع جوانبه بموضوعية', scores: { analytical: 2, logical: 1 } },
-      { text: 'أبحث عن الحل العقلاني الأمثل بهدوء', scores: { rationalistic: 2, reasoning: 1 } },
-      { text: 'أتأمل في الموقف بعمق وأستخلص العبر', scores: { reflective: 2, introspective: 1 } },
-    ],
-  },
-  {
-    id: 8,
-    text: 'ما الذي تركز عليه أكثر عند كتابة قصة قصيرة؟',
-    options: [
-      { text: 'المشاعر الداخلية للشخصيات وعالمهم النفسي', scores: { emotional: 2, introspective: 1 } },
-      { text: 'تسلسل الأحداث المنطقي وتماسك الحبكة', scores: { logical: 2, reasoning: 1 } },
-      { text: 'وصف المكان والزمان والأجواء بدقة متناهية', scores: { descriptive: 2, detailed: 1 } },
-      { text: 'تحليل دوافع الشخصيات وفهم تصرفاتهم', scores: { analytical: 2, rationalistic: 1 } },
-    ],
-  },
+export const statements: Statement[] = [
+  // الكاتب المتعاطف (1-5)
+  { id: 1, text: 'أحرص على أن تُظهر كتابتي تفهُّمًا لمشاعر الآخرين وتجاربهم.', style: 'empathetic' },
+  { id: 2, text: 'أحاول التعبير عن وجهات النظر المختلفة باحترام واهتمام.', style: 'empathetic' },
+  { id: 3, text: 'أتجنب استخدام الكلمات التي قد تجرح مشاعر القارئ.', style: 'empathetic' },
+  { id: 4, text: 'أُراعي في كتابتي الظروف الإنسانية التي يمرّ بها الأشخاص.', style: 'empathetic' },
+  { id: 5, text: 'أكتب بطريقة تعكس تعاطفي مع الفئات الضعيفة أو المتضررة.', style: 'empathetic' },
+
+  // الكاتب الخيالي (6-10)
+  { id: 6, text: 'أتخيّل عوالم أو مواقف غير واقعية أثناء الكتابة.', style: 'imaginative' },
+  { id: 7, text: 'أستخدم شخصيات أو أحداثًا مبتكرة لا تعتمد على الواقع.', style: 'imaginative' },
+  { id: 8, text: 'أفضّل كتابة نصوص تتضمّن خيالًا أو عناصر غير مألوفة.', style: 'imaginative' },
+  { id: 9, text: 'أستمتع بابتكار أحداث لا يمكن حدوثها في الحياة اليومية.', style: 'imaginative' },
+  { id: 10, text: 'أرى أن النص يصبح أجمل عندما يحتوي على مفارقات خيالية.', style: 'imaginative' },
+
+  // الكاتب الوصفي (11-15)
+  { id: 11, text: 'أستخدم الكثير من التفاصيل التي تصف المكان أو الحدث.', style: 'descriptive' },
+  { id: 12, text: 'أعتمد على الحواس الخمس لبناء المشاهد في النص.', style: 'descriptive' },
+  { id: 13, text: 'أستمتع برسم صورة ذهنية دقيقة للقارئ.', style: 'descriptive' },
+  { id: 14, text: 'أفضّل التمهّل في السرد من أجل الوصف الدقيق.', style: 'descriptive' },
+  { id: 15, text: 'يظهر اهتمامي بعناصر اللون والصوت والحركة بشكل مستمر.', style: 'descriptive' },
+
+  // الكاتب التحليلي (16-20)
+  { id: 16, text: 'أحاول تفسير الأحداث وبيان أسبابها أثناء الكتابة.', style: 'analytical' },
+  { id: 17, text: 'أطرح أسئلة من نوع "لماذا؟" و"كيف؟" داخل النص.', style: 'analytical' },
+  { id: 18, text: 'أربط بين عناصر الموضوع وأحلل العلاقات بينها.', style: 'analytical' },
+  { id: 19, text: 'أهتم بعمق الفكرة أكثر من جمال الأسلوب.', style: 'analytical' },
+  { id: 20, text: 'أقدّم رؤية أو استنتاجًا نهائيًا بعد تحليل المحتوى.', style: 'analytical' },
+
+  // الكاتب التبريري (21-25)
+  { id: 21, text: 'أحاول دائمًا تبرير مواقفي أو أفكاري في النص.', style: 'justificatory' },
+  { id: 22, text: 'أستخدم أمثلة كثيرة لتفسير أسباب ما أكتب عنه.', style: 'justificatory' },
+  { id: 23, text: 'أميل إلى الدفاع عن وجهة نظري بإيراد حجج متتابعة.', style: 'justificatory' },
+  { id: 24, text: 'أشرح للقارئ لماذا اخترت موقفًا معينًا في الكتابة.', style: 'justificatory' },
+  { id: 25, text: 'أركز على إقناع القارئ بصحة أفكاري من خلال التبرير المستمر.', style: 'justificatory' },
+
+  // الكاتب المتفرد (26-30)
+  { id: 26, text: 'أسلوبي خاصًّا ومختلفًا عن الآخرين.', style: 'unique' },
+  { id: 27, text: 'أحاول ابتكار طرق جديدة لعرض الأفكار.', style: 'unique' },
+  { id: 28, text: 'أكتب بنبرة شخصية مميزة تظهر في أعمالي.', style: 'unique' },
+  { id: 29, text: 'لا أحب التقليد، بل أميل إلى الإبداع والتميّز.', style: 'unique' },
+  { id: 30, text: 'أسعى لترك بصمة خاصة تُعرف بها كتابتي.', style: 'unique' },
+
+  // الكاتب المدقق (31-35)
+  { id: 31, text: 'أهتم اهتمامًا كبيرًا بصحة القواعد والإملاء.', style: 'meticulous' },
+  { id: 32, text: 'أتأكد من دقة كل معلومة قبل إدراجها في النص.', style: 'meticulous' },
+  { id: 33, text: 'أراجع وأستخدم علامات الترقيم بعناية.', style: 'meticulous' },
+  { id: 34, text: 'أحرص على تنظيم الفقرات بشكل منطقي ومتسلسل.', style: 'meticulous' },
+  { id: 35, text: 'لا أقبل بوجود أي خطأ صغير في النص.', style: 'meticulous' },
+
+  // الكاتب المستغرق (36-40)
+  { id: 36, text: 'أنشغل كليًّا أثناء الكتابة ولا أشعر بالوقت.', style: 'immersed' },
+  { id: 37, text: 'أعيش أحداث النص وكأنني جزء منها.', style: 'immersed' },
+  { id: 38, text: 'يصعب عليّ التوقف عن الكتابة عندما أكون مندمجًا فيها.', style: 'immersed' },
+  { id: 39, text: 'أركز بشدة بحيث أن المحيط الخارجي لا يؤثر فيّ أثناء الكتابة.', style: 'immersed' },
+  { id: 40, text: 'أشعر بالحماس العميق حين أكون مستغرقًا في الكتابة.', style: 'immersed' },
+
+  // الكاتب المتأني (41-45)
+  { id: 41, text: 'آخذ وقتًا كافيًا للتفكير قبل البدء في الكتابة.', style: 'deliberate' },
+  { id: 42, text: 'أراجع النص أكثر من مرة قبل تسليمه.', style: 'deliberate' },
+  { id: 43, text: 'أفضّل الكتابة ببطء مع ضمان جودة كل فكرة.', style: 'deliberate' },
+  { id: 44, text: 'أتردد في اختيار العبارات حتى أتأكد من دقتها.', style: 'deliberate' },
+  { id: 45, text: 'لا أندفع في كتابة الأفكار قبل التأكد من ترابطها.', style: 'deliberate' },
 ];
+
+export const dimensionLabels: Record<WritingStyle, string> = {
+  empathetic: 'الكاتب المتعاطف',
+  imaginative: 'الكاتب الخيالي',
+  descriptive: 'الكاتب الوصفي',
+  analytical: 'الكاتب التحليلي',
+  justificatory: 'الكاتب التبريري',
+  unique: 'الكاتب المتفرد',
+  meticulous: 'الكاتب المدقق',
+  immersed: 'الكاتب المستغرق',
+  deliberate: 'الكاتب المتأني',
+};
+
+const ALL_STYLES: WritingStyle[] = [
+  'empathetic', 'imaginative', 'descriptive', 'analytical', 'justificatory',
+  'unique', 'meticulous', 'immersed', 'deliberate',
+];
+
+export const statementGroups: StatementGroup[] = ALL_STYLES.map(style => ({
+  style,
+  label: dimensionLabels[style],
+  statements: statements.filter(s => s.style === style),
+}));
+
+export const TOTAL_STATEMENTS = statements.length;
+export const STATEMENTS_PER_GROUP = 5;
+export const TOTAL_GROUPS = statementGroups.length;
