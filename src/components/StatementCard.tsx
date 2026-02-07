@@ -24,7 +24,7 @@ const StatementCard = ({ statement, answer, onAnswer, index }: StatementCardProp
       }`}
     >
       <span className="flex-1 text-right text-sm leading-relaxed sm:text-base">
-        {statement.id}. {statement.text}
+        {statement.text}
       </span>
 
       <div className="flex shrink-0 gap-2">
