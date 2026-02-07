@@ -5,6 +5,7 @@ import { BookOpen, GraduationCap, AlertTriangle, Lightbulb, Feather } from 'luci
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 import { Button } from '@/components/ui/button';
 import Header from '@/components/Header';
+import CompatibilityMatrix from '@/components/CompatibilityMatrix';
 import { useWriter } from '@/contexts/WriterContext';
 import { styleData, styleNames } from '@/data/styles';
 import { supabase } from '@/integrations/supabase/client';
@@ -154,6 +155,11 @@ const StyleReport = () => {
               </ul>
             </motion.div>
           </div>
+        </div>
+
+        {/* Compatibility Matrix */}
+        <div className="mx-auto mt-8 max-w-5xl">
+          <CompatibilityMatrix currentStyle={profile.style} />
         </div>
 
         {/* Action Buttons */}
