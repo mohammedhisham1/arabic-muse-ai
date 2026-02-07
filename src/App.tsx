@@ -10,6 +10,8 @@ import StyleTest from "./pages/StyleTest";
 import StyleReport from "./pages/StyleReport";
 import WritingModels from "./pages/WritingModels";
 import LearningPath from "./pages/LearningPath";
+import LessonView from "./pages/LessonView";
+import Assessment from "./pages/Assessment";
 import CreativeWriting from "./pages/CreativeWriting";
 import TeacherDashboard from "./pages/TeacherDashboard";
 import FinalOutputs from "./pages/FinalOutputs";
@@ -32,6 +34,8 @@ const App = () => (
             <Route path="/style-report" element={<StyleReport />} />
             <Route path="/writing-models" element={<WritingModels />} />
             <Route path="/learning-path" element={<LearningPath />} />
+            <Route path="/lesson/:lessonIndex" element={<LessonView />} />
+            <Route path="/assessment/:type" element={<Assessment />} />
             <Route
               path="/creative-writing"
               element={

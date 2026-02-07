@@ -1,0 +1,285 @@
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ClipboardCheck, CheckCircle2, XCircle, ArrowLeft, Award, RotateCcw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import Header from '@/components/Header';
+import { useWriter } from '@/contexts/WriterContext';
+import { conceptQuiz, elementsQuiz } from '@/data/quizzes';
+import type { QuizQuestion } from '@/types/writer';
+
+const Assessment = () => {
+  const { profile } = useWriter();
+  const navigate = useNavigate();
+  const { type } = useParams<{ type: string }>();
+
+  const [currentQ, setCurrentQ] = useState(0);
+  const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
+  const [showResult, setShowResult] = useState(false);
+  const [score, setScore] = useState(0);
+  const [answered, setAnswered] = useState<boolean[]>([]);
+  const [quizDone, setQuizDone] = useState(false);
+
+  useEffect(() => {
+    if (!profile) navigate('/style-test');
+  }, [profile, navigate]);
+
+  useEffect(() => {
+    setCurrentQ(0);
+    setSelectedAnswer(null);
+    setShowResult(false);
+    setScore(0);
+    setAnswered([]);
+    setQuizDone(false);
+  }, [type]);
+
+  if (!profile) return null;
+
+  const isConcept = type === 'concept';
+  const questions: QuizQuestion[] = isConcept ? conceptQuiz : elementsQuiz;
+  const question = questions[currentQ];
+
+  const quizTitle = isConcept ? 'اختبار مفهوم القصة الإبداعية' : 'اختبار عناصر القصة الإبداعية';
+
+  const handleAnswer = (answerIdx: number) => {
+    if (showResult) return;
+    setSelectedAnswer(answerIdx);
+    setShowResult(true);
+    const isCorrect = answerIdx === question.correctIndex;
+    if (isCorrect) setScore(prev => prev + 1);
+    setAnswered(prev => [...prev, isCorrect]);
+  };
+
+  const handleNext = () => {
+    if (currentQ < questions.length - 1) {
+      setCurrentQ(prev => prev + 1);
+      setSelectedAnswer(null);
+      setShowResult(false);
+    } else {
+      setQuizDone(true);
+    }
+  };
+
+  const getNextRoute = () => {
+    if (isConcept) return '/lesson/1';
+    return '/lesson/2';
+  };
+
+  const scorePercent = Math.round((score / questions.length) * 100);
+  const passed = scorePercent >= 60;
+
+  const handleRetry = () => {
+    setCurrentQ(0);
+    setSelectedAnswer(null);
+    setShowResult(false);
+    setScore(0);
+    setAnswered([]);
+    setQuizDone(false);
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Header />
+
+      <main className="container mx-auto px-4 py-12">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mx-auto max-w-2xl"
+        >
+          {/* Header */}
+          <div className="mb-8 text-center">
+            <span className="inline-flex items-center gap-2 rounded-full bg-accent/10 px-4 py-1.5 text-sm font-medium text-accent-foreground">
+              <ClipboardCheck className="h-4 w-4 text-accent" />
+              {isConcept ? 'اختبار المفهوم' : 'اختبار العناصر'}
+            </span>
+            <h1 className="mt-4 font-amiri text-3xl font-bold text-foreground">
+              {quizTitle}
+            </h1>
+            {!quizDone && (
+              <p className="mt-2 text-muted-foreground">
+                السؤال {currentQ + 1} من {questions.length}
+              </p>
+            )}
+          </div>
+
+          {/* Progress Bar */}
+          {!quizDone && (
+            <div className="mb-8 h-2 w-full rounded-full bg-muted overflow-hidden">
+              <motion.div
+                className="h-full rounded-full bg-primary"
+                initial={{ width: 0 }}
+                animate={{ width: `${((currentQ + (showResult ? 1 : 0)) / questions.length) * 100}%` }}
+                transition={{ duration: 0.3 }}
+              />
+            </div>
+          )}
+
+          <AnimatePresence mode="wait">
+            {!quizDone ? (
+              <motion.div
+                key={`q-${currentQ}`}
+                initial={{ opacity: 0, x: 30 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -30 }}
+                className="rounded-2xl border border-border bg-card p-8"
+              >
+                {/* Question */}
+                <h2 className="font-amiri text-xl font-bold text-foreground mb-6">
+                  {question.question}
+                </h2>
+
+                {/* Options */}
+                <div className="space-y-3 mb-6">
+                  {question.options.map((option, oIdx) => {
+                    let borderClass = 'border-border hover:border-primary/30';
+                    let bgClass = 'bg-background';
+
+                    if (showResult) {
+                      if (oIdx === question.correctIndex) {
+                        borderClass = 'border-primary';
+                        bgClass = 'bg-primary/10';
+                      } else if (oIdx === selectedAnswer && oIdx !== question.correctIndex) {
+                        borderClass = 'border-destructive';
+                        bgClass = 'bg-destructive/10';
+                      }
+                    } else if (selectedAnswer === oIdx) {
+                      borderClass = 'border-primary/50';
+                      bgClass = 'bg-primary/5';
+                    }
+
+                    return (
+                      <button
+                        key={oIdx}
+                        onClick={() => handleAnswer(oIdx)}
+                        disabled={showResult}
+                        className={`w-full rounded-xl border-2 ${borderClass} ${bgClass} p-4 text-right transition-all ${
+                          !showResult ? 'cursor-pointer' : ''
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 ${
+                            showResult && oIdx === question.correctIndex
+                              ? 'border-primary bg-primary text-primary-foreground'
+                              : showResult && oIdx === selectedAnswer
+                                ? 'border-destructive bg-destructive text-destructive-foreground'
+                                : 'border-border bg-muted'
+                          }`}>
+                            {showResult && oIdx === question.correctIndex ? (
+                              <CheckCircle2 className="h-4 w-4" />
+                            ) : showResult && oIdx === selectedAnswer && oIdx !== question.correctIndex ? (
+                              <XCircle className="h-4 w-4" />
+                            ) : (
+                              <span className="text-xs font-bold">{oIdx + 1}</span>
+                            )}
+                          </div>
+                          <span className="text-sm font-medium text-foreground">{option}</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Explanation */}
+                {showResult && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className={`rounded-xl p-4 mb-6 ${
+                      selectedAnswer === question.correctIndex
+                        ? 'bg-primary/10 border border-primary/20'
+                        : 'bg-accent/10 border border-accent/20'
+                    }`}
+                  >
+                    <p className="text-sm font-bold text-foreground mb-1">
+                      {selectedAnswer === question.correctIndex ? '✅ إجابة صحيحة!' : '💡 الإجابة الصحيحة:'}
+                    </p>
+                    <p className="text-sm text-muted-foreground">{question.explanation}</p>
+                  </motion.div>
+                )}
+
+                {/* Next Button */}
+                {showResult && (
+                  <Button
+                    variant="hero"
+                    onClick={handleNext}
+                    className="gap-2 w-full"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    {currentQ < questions.length - 1 ? 'السؤال التالي' : 'عرض النتيجة'}
+                  </Button>
+                )}
+              </motion.div>
+            ) : (
+              /* Results */
+              <motion.div
+                key="results"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="rounded-2xl border-2 border-primary/30 bg-card p-10 text-center"
+              >
+                <span className="text-6xl block mb-4">{passed ? '🎉' : '📚'}</span>
+                <h2 className="font-amiri text-2xl font-bold text-foreground mb-2">
+                  {passed ? 'أحسنت! لقد اجتزت الاختبار' : 'حاول مرة أخرى'}
+                </h2>
+                <p className="text-5xl font-bold text-primary mb-2">
+                  {scorePercent}%
+                </p>
+                <p className="text-muted-foreground mb-2">
+                  {score} من {questions.length} إجابات صحيحة
+                </p>
+
+                {/* Answer Summary */}
+                <div className="flex justify-center gap-2 my-6">
+                  {answered.map((correct, i) => (
+                    <div
+                      key={i}
+                      className={`h-3 w-3 rounded-full ${correct ? 'bg-primary' : 'bg-destructive'}`}
+                    />
+                  ))}
+                </div>
+
+                <p className="text-sm text-muted-foreground mb-8">
+                  {passed
+                    ? 'لقد أثبتت فهمك الجيد! يمكنك الانتقال إلى الدرس التالي.'
+                    : 'لا بأس! راجع الدرس وحاول مرة أخرى. التعلم رحلة وليس سباقًا.'}
+                </p>
+
+                <div className="flex flex-wrap justify-center gap-4">
+                  {passed ? (
+                    <Button
+                      variant="hero"
+                      onClick={() => navigate(getNextRoute())}
+                      className="gap-2"
+                    >
+                      <Award className="h-4 w-4" />
+                      الدرس التالي
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="hero"
+                      onClick={handleRetry}
+                      className="gap-2"
+                    >
+                      <RotateCcw className="h-4 w-4" />
+                      إعادة الاختبار
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    onClick={() => navigate(`/lesson/${isConcept ? '0' : '1'}`)}
+                    className="gap-2"
+                  >
+                    العودة للدرس
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+      </main>
+    </div>
+  );
+};
+
+export default Assessment;

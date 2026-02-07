@@ -48,3 +48,20 @@ export interface StyleInfo {
     objectives: string[];
   }[];
 }
+
+export interface HighlightedPhrase {
+  phrase: string;
+  characteristic: string;
+}
+
+export interface QuizQuestion {
+  question: string;
+  options: string[];
+  correctIndex: number;
+  explanation: string;
+}
+
+export interface StyleCompatibility {
+  strong: WritingStyle[];
+  moderate: WritingStyle[];
+}

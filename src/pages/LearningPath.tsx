@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Target, Lock, CheckCircle2, BookOpen, ArrowRight } from 'lucide-react';
+import { Target, Lock, CheckCircle2, BookOpen, ArrowRight, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Header from '@/components/Header';
 import { useWriter } from '@/contexts/WriterContext';
@@ -50,7 +50,6 @@ const LearningPath = () => {
             <div className="space-y-8">
               {info.lessons.map((lesson, idx) => {
                 const isFirst = idx === 0;
-                const isLocked = idx > 0;
 
                 return (
                   <motion.div
@@ -108,13 +107,18 @@ const LearningPath = () => {
                       </div>
 
                       {isFirst && (
-                        <Button variant="default" size="sm" className="gap-2" disabled>
-                          <BookOpen className="h-4 w-4" />
-                          قريبًا — بدء الدرس
+                        <Button
+                          variant="hero"
+                          size="sm"
+                          className="gap-2"
+                          onClick={() => navigate(`/lesson/${idx}`)}
+                        >
+                          <Play className="h-4 w-4" />
+                          ابدأ الدرس
                         </Button>
                       )}
 
-                      {isLocked && (
+                      {!isFirst && (
                         <p className="flex items-center gap-1 text-xs text-muted-foreground">
                           <Lock className="h-3 w-3" />
                           يُفتح بعد إتمام الدرس السابق
