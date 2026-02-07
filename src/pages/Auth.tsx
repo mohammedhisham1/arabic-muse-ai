@@ -54,9 +54,14 @@ const Auth = () => {
     setSubmitting(true);
 
     try {
+      // Determine the correct redirect URL (use production URL, not localhost)
+      const siteUrl = import.meta.env.PROD
+        ? 'https://arabic-muse-ai.netlify.app'
+        : window.location.origin;
+
       if (mode === 'forgot') {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/settings`,
+          redirectTo: `${siteUrl}/settings`,
         });
         if (error) throw error;
         toast.success('تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني');
@@ -69,11 +74,15 @@ const Auth = () => {
           password,
           options: {
             data: { full_name: fullName },
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo: siteUrl,
           },
         });
         if (error) throw error;
         toast.success('تم إنشاء الحساب! تحقق من بريدك الإلكتروني لتأكيد الحساب.');
+        // Switch to login mode after successful registration
+        setMode('login');
+        setSubmitting(false);
+        return;
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) {
