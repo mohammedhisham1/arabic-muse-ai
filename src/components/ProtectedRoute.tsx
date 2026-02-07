@@ -4,7 +4,7 @@ import { useAuth, AppRole } from '@/hooks/useAuth';
 
 interface ProtectedRouteProps {
   children: ReactNode;
-  requiredRole?: AppRole;
+  requiredRole?: AppRole | AppRole[];
 }
 
 const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
@@ -19,10 +19,19 @@ const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
   }
 
   if (!user) return <Navigate to="/auth" replace />;
-  if (!role) return <Navigate to="/auth?step=role" replace />;
-  if (requiredRole && role !== requiredRole) return <Navigate to="/" replace />;
+  if (!role) return <Navigate to="/auth" replace />; // No role selection - redirect to auth
+
+  // Check role requirements
+  if (requiredRole) {
+    const allowedRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+    // Admin has access to everything
+    if (role !== 'admin' && !allowedRoles.includes(role)) {
+      return <Navigate to="/" replace />;
+    }
+  }
 
   return <>{children}</>;
 };
 
 export default ProtectedRoute;
+

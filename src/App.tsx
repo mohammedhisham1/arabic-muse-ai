@@ -14,7 +14,9 @@ import LessonView from "./pages/LessonView";
 import Assessment from "./pages/Assessment";
 import CreativeWriting from "./pages/CreativeWriting";
 import TeacherDashboard from "./pages/TeacherDashboard";
+import AdminDashboard from "./pages/AdminDashboard";
 import FinalOutputs from "./pages/FinalOutputs";
+import Settings from "./pages/Settings";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 
@@ -53,10 +55,26 @@ const App = () => (
               }
             />
             <Route
+              path="/admin"
+              element={
+                <ProtectedRoute requiredRole="admin">
+                  <AdminDashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/final-outputs"
               element={
                 <ProtectedRoute requiredRole="student">
                   <FinalOutputs />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/settings"
+              element={
+                <ProtectedRoute>
+                  <Settings />
                 </ProtectedRoute>
               }
             />
@@ -69,3 +87,4 @@ const App = () => (
 );
 
 export default App;
+

@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { BookOpen, PenTool, LogIn, LogOut, LayoutDashboard, Award, Feather } from 'lucide-react';
+import { BookOpen, PenTool, LogIn, LogOut, LayoutDashboard, Award, Feather, Shield, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -61,6 +61,35 @@ const Header = () => {
             >
               <LayoutDashboard className="h-4 w-4" />
               <span className="hidden sm:inline">لوحة التحكم</span>
+            </Link>
+          )}
+
+          {user && role === 'admin' && (
+            <>
+              <Link
+                to="/admin"
+                className="flex items-center gap-1.5 text-sm font-medium text-amber-600 transition-colors hover:text-amber-700"
+              >
+                <Shield className="h-4 w-4" />
+                <span className="hidden sm:inline">إدارة المنصة</span>
+              </Link>
+              <Link
+                to="/teacher-dashboard"
+                className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <LayoutDashboard className="h-4 w-4" />
+                <span className="hidden sm:inline">الطلاب</span>
+              </Link>
+            </>
+          )}
+
+          {user && (
+            <Link
+              to="/settings"
+              className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <Settings className="h-4 w-4" />
+              <span className="hidden sm:inline">الإعدادات</span>
             </Link>
           )}
 

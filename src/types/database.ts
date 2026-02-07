@@ -11,7 +11,21 @@ export interface Profile {
 export interface UserRole {
   id: string;
   user_id: string;
-  role: 'student' | 'teacher';
+  role: 'student' | 'teacher' | 'admin';
+}
+
+export interface TeacherEmail {
+  id: string;
+  email: string;
+  created_at: string;
+}
+
+export interface AppSetting {
+  id: string;
+  key: string;
+  value: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Writing {
