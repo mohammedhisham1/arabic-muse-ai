@@ -6,36 +6,40 @@ import { Button } from '@/components/ui/button';
 import Header from '@/components/Header';
 import StatementCard from '@/components/StatementCard';
 import { useWriter } from '@/contexts/WriterContext';
-import { statementGroups, TOTAL_GROUPS } from '@/data/questionnaire';
+import { shuffledStatements, STATEMENTS_PER_PAGE, TOTAL_PAGES } from '@/data/questionnaire';
 
 const StyleTest = () => {
-  const [currentGroup, setCurrentGroup] = useState(0);
+  const [currentPage, setCurrentPage] = useState(0);
   const { answers, setAnswer, calculateProfile } = useWriter();
   const navigate = useNavigate();
 
-  const group = statementGroups[currentGroup];
-  const progress = ((currentGroup + 1) / TOTAL_GROUPS) * 100;
+  const pageStatements = shuffledStatements.slice(
+    currentPage * STATEMENTS_PER_PAGE,
+    (currentPage + 1) * STATEMENTS_PER_PAGE
+  );
 
-  const groupAnswered = group.statements.every(
+  const progress = ((currentPage + 1) / TOTAL_PAGES) * 100;
+
+  const pageAnswered = pageStatements.every(
     s => answers[s.id] === true || answers[s.id] === false
   );
-  const isLast = currentGroup === TOTAL_GROUPS - 1;
+  const isLast = currentPage === TOTAL_PAGES - 1;
 
-  const allAnswered = statementGroups.every(g =>
-    g.statements.every(s => answers[s.id] === true || answers[s.id] === false)
+  const allAnswered = shuffledStatements.every(
+    s => answers[s.id] === true || answers[s.id] === false
   );
 
   const handleNext = () => {
     if (isLast && allAnswered) {
       calculateProfile();
       navigate('/style-report');
-    } else if (groupAnswered && !isLast) {
-      setCurrentGroup(prev => prev + 1);
+    } else if (pageAnswered && !isLast) {
+      setCurrentPage(prev => prev + 1);
     }
   };
 
   const handlePrev = () => {
-    if (currentGroup > 0) setCurrentGroup(prev => prev - 1);
+    if (currentPage > 0) setCurrentPage(prev => prev - 1);
   };
 
   return (
@@ -46,7 +50,7 @@ const StyleTest = () => {
         {/* Progress */}
         <div className="mx-auto max-w-2xl">
           <div className="mb-2 flex items-center justify-between text-sm text-muted-foreground">
-            <span>البُعد {currentGroup + 1} من {TOTAL_GROUPS}</span>
+            <span>الصفحة {currentPage + 1} من {TOTAL_PAGES}</span>
             <span>{Math.round(progress)}%</span>
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
@@ -59,25 +63,25 @@ const StyleTest = () => {
           </div>
         </div>
 
-        {/* Dimension Title */}
+        {/* Statements */}
         <div className="mx-auto mt-10 max-w-2xl">
           <AnimatePresence mode="wait">
             <motion.div
-              key={currentGroup}
+              key={currentPage}
               initial={{ opacity: 0, x: -40 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 40 }}
               transition={{ duration: 0.4 }}
             >
               <h2 className="mb-6 font-amiri text-2xl font-bold text-foreground sm:text-3xl">
-                {group.label}
+                استبيان تحديد أنماط الكتابة الإبداعية
               </h2>
               <p className="mb-6 text-sm text-muted-foreground">
                 أجب بـ "نعم" أو "لا" على كل عبارة من العبارات التالية:
               </p>
 
               <div className="space-y-3">
-                {group.statements.map((statement, idx) => (
+                {pageStatements.map((statement, idx) => (
                   <StatementCard
                     key={statement.id}
                     statement={statement}
@@ -95,7 +99,7 @@ const StyleTest = () => {
             <Button
               variant="ghost"
               onClick={handlePrev}
-              disabled={currentGroup === 0}
+              disabled={currentPage === 0}
               className="gap-2"
             >
               <ArrowRight className="h-4 w-4" />
@@ -104,7 +108,7 @@ const StyleTest = () => {
 
             <Button
               onClick={handleNext}
-              disabled={!groupAnswered}
+              disabled={!pageAnswered}
               className={`gap-2 ${isLast && allAnswered ? 'bg-accent text-accent-foreground hover:bg-accent/90' : ''}`}
             >
               {isLast ? (

@@ -77,17 +77,27 @@ export const dimensionLabels: Record<WritingStyle, string> = {
   deliberate: 'الكاتب المتأني',
 };
 
-const ALL_STYLES: WritingStyle[] = [
+export const ALL_STYLES: WritingStyle[] = [
   'empathetic', 'imaginative', 'descriptive', 'analytical', 'justificatory',
   'unique', 'meticulous', 'immersed', 'deliberate',
 ];
 
-export const statementGroups: StatementGroup[] = ALL_STYLES.map(style => ({
-  style,
-  label: dimensionLabels[style],
-  statements: statements.filter(s => s.style === style),
-}));
+// Shuffled statements so the user cannot identify which dimension each belongs to.
+// Uses a deterministic interleave: pick one from each dimension in round-robin order.
+function interleaveStatements(): Statement[] {
+  const groups = ALL_STYLES.map(style => statements.filter(s => s.style === style));
+  const result: Statement[] = [];
+  const maxLen = Math.max(...groups.map(g => g.length));
+  for (let i = 0; i < maxLen; i++) {
+    for (const group of groups) {
+      if (i < group.length) result.push(group[i]);
+    }
+  }
+  return result;
+}
 
+export const shuffledStatements = interleaveStatements();
+
+export const STATEMENTS_PER_PAGE = 5;
+export const TOTAL_PAGES = Math.ceil(shuffledStatements.length / STATEMENTS_PER_PAGE);
 export const TOTAL_STATEMENTS = statements.length;
-export const STATEMENTS_PER_GROUP = 5;
-export const TOTAL_GROUPS = statementGroups.length;
