@@ -4,31 +4,38 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowRight, ArrowLeft, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Header from '@/components/Header';
-import QuestionCard from '@/components/QuestionCard';
+import StatementCard from '@/components/StatementCard';
 import { useWriter } from '@/contexts/WriterContext';
-import { questions } from '@/data/questionnaire';
+import { statementGroups, TOTAL_GROUPS } from '@/data/questionnaire';
 
 const StyleTest = () => {
-  const [currentQ, setCurrentQ] = useState(0);
+  const [currentGroup, setCurrentGroup] = useState(0);
   const { answers, setAnswer, calculateProfile } = useWriter();
   const navigate = useNavigate();
 
-  const progress = ((currentQ + 1) / questions.length) * 100;
-  const canGoNext = answers[currentQ] >= 0;
-  const isLast = currentQ === questions.length - 1;
-  const allAnswered = answers.every(a => a >= 0);
+  const group = statementGroups[currentGroup];
+  const progress = ((currentGroup + 1) / TOTAL_GROUPS) * 100;
+
+  const groupAnswered = group.statements.every(
+    s => answers[s.id] === true || answers[s.id] === false
+  );
+  const isLast = currentGroup === TOTAL_GROUPS - 1;
+
+  const allAnswered = statementGroups.every(g =>
+    g.statements.every(s => answers[s.id] === true || answers[s.id] === false)
+  );
 
   const handleNext = () => {
     if (isLast && allAnswered) {
       calculateProfile();
       navigate('/style-report');
-    } else if (canGoNext && !isLast) {
-      setCurrentQ(prev => prev + 1);
+    } else if (groupAnswered && !isLast) {
+      setCurrentGroup(prev => prev + 1);
     }
   };
 
   const handlePrev = () => {
-    if (currentQ > 0) setCurrentQ(prev => prev - 1);
+    if (currentGroup > 0) setCurrentGroup(prev => prev - 1);
   };
 
   return (
@@ -39,7 +46,7 @@ const StyleTest = () => {
         {/* Progress */}
         <div className="mx-auto max-w-2xl">
           <div className="mb-2 flex items-center justify-between text-sm text-muted-foreground">
-            <span>السؤال {currentQ + 1} من {questions.length}</span>
+            <span>البُعد {currentGroup + 1} من {TOTAL_GROUPS}</span>
             <span>{Math.round(progress)}%</span>
           </div>
           <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
@@ -52,15 +59,35 @@ const StyleTest = () => {
           </div>
         </div>
 
-        {/* Question */}
-        <div className="mx-auto mt-12 max-w-2xl">
+        {/* Dimension Title */}
+        <div className="mx-auto mt-10 max-w-2xl">
           <AnimatePresence mode="wait">
-            <QuestionCard
-              key={currentQ}
-              question={questions[currentQ]}
-              selectedOption={answers[currentQ]}
-              onSelect={(idx) => setAnswer(currentQ, idx)}
-            />
+            <motion.div
+              key={currentGroup}
+              initial={{ opacity: 0, x: -40 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 40 }}
+              transition={{ duration: 0.4 }}
+            >
+              <h2 className="mb-6 font-amiri text-2xl font-bold text-foreground sm:text-3xl">
+                {group.label}
+              </h2>
+              <p className="mb-6 text-sm text-muted-foreground">
+                أجب بـ "نعم" أو "لا" على كل عبارة من العبارات التالية:
+              </p>
+
+              <div className="space-y-3">
+                {group.statements.map((statement, idx) => (
+                  <StatementCard
+                    key={statement.id}
+                    statement={statement}
+                    answer={answers[statement.id] ?? null}
+                    onAnswer={(value) => setAnswer(statement.id, value)}
+                    index={idx}
+                  />
+                ))}
+              </div>
+            </motion.div>
           </AnimatePresence>
 
           {/* Navigation */}
@@ -68,7 +95,7 @@ const StyleTest = () => {
             <Button
               variant="ghost"
               onClick={handlePrev}
-              disabled={currentQ === 0}
+              disabled={currentGroup === 0}
               className="gap-2"
             >
               <ArrowRight className="h-4 w-4" />
@@ -77,7 +104,7 @@ const StyleTest = () => {
 
             <Button
               onClick={handleNext}
-              disabled={!canGoNext}
+              disabled={!groupAnswered}
               className={`gap-2 ${isLast && allAnswered ? 'bg-accent text-accent-foreground hover:bg-accent/90' : ''}`}
             >
               {isLast ? (

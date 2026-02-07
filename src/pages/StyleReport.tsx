@@ -39,7 +39,7 @@ const StyleReport = () => {
   const radarData = Object.entries(profile.scores).map(([key, value]) => ({
     style: styleNames[key as WritingStyle],
     value,
-    fullMark: 10,
+    fullMark: 5,
   }));
 
   return (

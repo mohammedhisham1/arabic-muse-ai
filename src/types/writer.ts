@@ -1,23 +1,24 @@
 export type WritingStyle =
-  | 'emotional'
-  | 'logical'
-  | 'analytical'
+  | 'empathetic'
+  | 'imaginative'
   | 'descriptive'
-  | 'detailed'
-  | 'introspective'
-  | 'rationalistic'
-  | 'reasoning'
-  | 'reflective';
+  | 'analytical'
+  | 'justificatory'
+  | 'unique'
+  | 'meticulous'
+  | 'immersed'
+  | 'deliberate';
 
-export interface QuestionOption {
-  text: string;
-  scores: Partial<Record<WritingStyle, number>>;
-}
-
-export interface Question {
+export interface Statement {
   id: number;
   text: string;
-  options: QuestionOption[];
+  style: WritingStyle;
+}
+
+export interface StatementGroup {
+  style: WritingStyle;
+  label: string;
+  statements: Statement[];
 }
 
 export interface StyleProfile {
