@@ -37,14 +37,15 @@ const Auth = () => {
           } else if (role === 'teacher') {
             navigate('/teacher-dashboard');
           } else {
-            navigate('/creative-writing');
+            // Students go to homepage
+            navigate('/');
           }
         }, 1000); // 1 second delay for animation
         return () => clearTimeout(timer);
       } else {
-        // No role - redirect to creative-writing instead of home
-        console.log('No role found, redirecting to creative-writing');
-        navigate('/creative-writing');
+        // No role - redirect to homepage
+        console.log('No role found, redirecting to homepage');
+        navigate('/');
       }
     }
   }, [user, role, loading, navigate]);

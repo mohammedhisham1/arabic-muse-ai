@@ -30,11 +30,12 @@ const CreativeWriting = () => {
   }, [user]);
 
   const loadProfile = async () => {
-    const { data } = await (supabase as any)
+    const { data, error } = await (supabase as any)
       .from('profiles')
       .select('writing_style')
-      .eq('user_id', user!.id)
+      .eq('id', user!.id)  // Fixed: use 'id' not 'user_id'
       .maybeSingle();
+    console.log('Profile load:', { data, error, userId: user!.id });
     if (data?.writing_style) setWritingStyle(data.writing_style);
   };
 
@@ -48,6 +49,9 @@ const CreativeWriting = () => {
   };
 
   const handleSaveAndAnalyze = async () => {
+    // Debug log to see what's being submitted
+    console.log('Form submission:', { title, content, writingStyle, titleTrimmed: title.trim(), contentTrimmed: content.trim() });
+
     if (!title.trim() || !content.trim()) {
       toast.error('يرجى كتابة العنوان والنص');
       return;
@@ -68,6 +72,16 @@ const CreativeWriting = () => {
       setSaving(false);
 
       setAnalyzing(true);
+
+      // Debug log before API call
+      const payload = {
+        title,
+        content,
+        style: writingStyle,
+        writingId: writingData.id,
+      };
+      console.log('API payload:', payload);
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-writing`,
         {
@@ -76,12 +90,7 @@ const CreativeWriting = () => {
             'Content-Type': 'application/json',
             Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
           },
-          body: JSON.stringify({
-            title,
-            content,
-            style: writingStyle,
-            writingId: writingData.id,
-          }),
+          body: JSON.stringify(payload),
         }
       );
 
@@ -155,11 +164,10 @@ const CreativeWriting = () => {
                   <button
                     key={w.id}
                     onClick={() => selectExistingWriting(w)}
-                    className={`w-full rounded-lg border p-3 text-right transition-all ${
-                      selectedWriting === w.id
+                    className={`w-full rounded-lg border p-3 text-right transition-all ${selectedWriting === w.id
                         ? 'border-primary bg-primary/5'
                         : 'border-border bg-background hover:border-primary/30'
-                    }`}
+                      }`}
                   >
                     <p className="text-sm font-bold text-foreground truncate">{w.title}</p>
                     <p className="text-xs text-muted-foreground mt-1">

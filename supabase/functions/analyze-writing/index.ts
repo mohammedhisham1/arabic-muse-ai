@@ -12,8 +12,8 @@ serve(async (req) => {
   }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY is not configured');
+    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+    if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY is not configured');
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -22,81 +22,79 @@ serve(async (req) => {
     const { title, content, style, writingId } = await req.json();
     if (!content || !writingId) throw new Error('Missing required fields');
 
-    const aiResponse = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-3-flash-preview',
-        messages: [
-          {
-            role: 'system',
-            content: `أنت خبير في تحليل الكتابة الإبداعية باللغة العربية. مهمتك تقييم نص إبداعي كتبه متعلم غير ناطق بالعربية.
+    const prompt = `أنت خبير في تحليل الكتابة الإبداعية باللغة العربية. مهمتك تقييم نص إبداعي كتبه متعلم.
 
-قيّم النص من حيث:
+قيّم النص التالي من حيث:
 1. دقة الكلمات (word_precision): صحة استخدام المفردات والتراكيب (0-10)
 2. عمق المشاعر (feeling_depth): القدرة على التعبير عن المشاعر والأحاسيس (0-10)
 3. الهوية اللغوية (linguistic_identity): تميز الأسلوب وتطور صوت الكاتب (0-10)
 
 أسلوب الكاتب: ${style || 'غير محدد'}
-قدم تقييمًا عادلًا ومشجعًا مع اقتراحات عملية. اكتب بالعربية.`
+
+عنوان النص: ${title}
+
+النص:
+${content}
+
+أجب بتنسيق JSON فقط بهذا الشكل بدون أي نص إضافي:
+{
+  "word_precision": <رقم من 0 إلى 10>,
+  "feeling_depth": <رقم من 0 إلى 10>,
+  "linguistic_identity": <رقم من 0 إلى 10>,
+  "feedback": "<ملاحظات تفصيلية بالعربية>",
+  "suggestions": "<اقتراحات للتحسين بالعربية>"
+}`;
+
+    const aiResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.7,
+            topK: 40,
+            topP: 0.95,
+            maxOutputTokens: 1024,
           },
-          { role: 'user', content: `عنوان: ${title}\n\nالنص:\n${content}` }
-        ],
-        tools: [{
-          type: 'function',
-          function: {
-            name: 'evaluate_writing',
-            description: 'تقييم النص الإبداعي العربي',
-            parameters: {
-              type: 'object',
-              properties: {
-                word_precision: { type: 'number', description: 'دقة الكلمات 0-10' },
-                feeling_depth: { type: 'number', description: 'عمق المشاعر 0-10' },
-                linguistic_identity: { type: 'number', description: 'الهوية اللغوية 0-10' },
-                feedback: { type: 'string', description: 'ملاحظات تفصيلية بالعربية' },
-                suggestions: { type: 'string', description: 'اقتراحات للتحسين بالعربية' },
-              },
-              required: ['word_precision', 'feeling_depth', 'linguistic_identity', 'feedback', 'suggestions'],
-              additionalProperties: false,
-            },
-          },
-        }],
-        tool_choice: { type: 'function', function: { name: 'evaluate_writing' } },
-      }),
-    });
+        }),
+      }
+    );
 
     if (!aiResponse.ok) {
+      const errText = await aiResponse.text();
+      console.error('Gemini API error:', aiResponse.status, errText);
+
       if (aiResponse.status === 429) {
         return new Response(JSON.stringify({ error: 'تم تجاوز حد الطلبات، يرجى المحاولة لاحقًا' }), {
           status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      if (aiResponse.status === 402) {
-        return new Response(JSON.stringify({ error: 'يرجى إضافة رصيد لمتابعة استخدام الذكاء الاصطناعي' }), {
-          status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      const errText = await aiResponse.text();
-      console.error('AI error:', aiResponse.status, errText);
-      throw new Error('AI gateway error');
+      throw new Error(`Gemini API error: ${aiResponse.status} - ${errText}`);
     }
 
     const aiData = await aiResponse.json();
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) throw new Error('No evaluation from AI');
+    const responseText = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
 
-    const evaluation = JSON.parse(toolCall.function.arguments);
+    if (!responseText) throw new Error('No response from Gemini');
+
+    // Extract JSON from response (handle markdown code blocks)
+    let jsonStr = responseText;
+    const jsonMatch = responseText.match(/```json?\s*([\s\S]*?)\s*```/);
+    if (jsonMatch) {
+      jsonStr = jsonMatch[1];
+    }
+
+    const evaluation = JSON.parse(jsonStr.trim());
 
     const { data: evalData, error: evalError } = await supabaseAdmin
       .from('writing_evaluations')
       .insert({
         writing_id: writingId,
-        word_precision: Math.min(10, Math.max(0, evaluation.word_precision)),
-        feeling_depth: Math.min(10, Math.max(0, evaluation.feeling_depth)),
-        linguistic_identity: Math.min(10, Math.max(0, evaluation.linguistic_identity)),
+        word_precision: Math.min(10, Math.max(0, Number(evaluation.word_precision))),
+        feeling_depth: Math.min(10, Math.max(0, Number(evaluation.feeling_depth))),
+        linguistic_identity: Math.min(10, Math.max(0, Number(evaluation.linguistic_identity))),
         feedback: evaluation.feedback,
         suggestions: evaluation.suggestions,
       })

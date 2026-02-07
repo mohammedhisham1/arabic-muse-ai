@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Plus, Trash2, FileText, Target, Heart, Fingerprint, Search, TrendingUp, BarChart3 } from 'lucide-react';
+import { Users, Plus, Trash2, FileText, Target, Heart, Fingerprint, Search, TrendingUp, BarChart3, MessageCircle, Trophy, BookOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import Header from '@/components/Header';
 import ScoreGauge from '@/components/ScoreGauge';
 import TeacherInterventionPanel from '@/components/TeacherInterventionPanel';
+import TeacherStudentChat from '@/components/TeacherStudentChat';
+import StudentProgressTab from '@/components/StudentProgressTab';
+import StudentAchievementsTab from '@/components/StudentAchievementsTab';
+import StudentPerformanceTab from '@/components/StudentPerformanceTab';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
@@ -26,11 +30,12 @@ interface WritingWithEval extends Writing {
 const TeacherDashboard = () => {
   const { user } = useAuth();
   const [students, setStudents] = useState<StudentWithProfile[]>([]);
-  const [studentId, setStudentId] = useState('');
+  const [studentEmail, setStudentEmail] = useState('');
   const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
   const [studentWritings, setStudentWritings] = useState<WritingWithEval[]>([]);
   const [selectedWriting, setSelectedWriting] = useState<WritingWithEval | null>(null);
   const [showInterventions, setShowInterventions] = useState(false);
+  const [activeTab, setActiveTab] = useState<'writings' | 'progress' | 'achievements' | 'performance' | 'chat'>('writings');
 
   useEffect(() => {
     if (user) loadStudents();
@@ -64,15 +69,36 @@ const TeacherDashboard = () => {
     setStudents(enriched);
   };
 
-  const handleAddStudentById = async () => {
-    if (!studentId.trim()) return;
+  const handleAddStudentByEmail = async () => {
+    if (!studentEmail.trim()) return;
     try {
+      // Look up user by email from profiles table
+      const { data: profileData, error: profileError } = await (supabase as any)
+        .from('profiles')
+        .select('user_id')
+        .eq('email', studentEmail.trim().toLowerCase())
+        .maybeSingle();
+
+      if (profileError) throw profileError;
+
+      if (!profileData) {
+        toast.error('لم يتم العثور على طالب بهذا البريد الإلكتروني');
+        return;
+      }
+
       const { error } = await (supabase as any)
         .from('teacher_students')
-        .insert({ teacher_id: user!.id, student_id: studentId.trim() });
-      if (error) throw error;
+        .insert({ teacher_id: user!.id, student_id: profileData.user_id });
+      if (error) {
+        if (error.code === '23505') {
+          toast.error('هذا الطالب مضاف بالفعل');
+        } else {
+          throw error;
+        }
+        return;
+      }
       toast.success('تم إضافة الطالب بنجاح!');
-      setStudentId('');
+      setStudentEmail('');
       loadStudents();
     } catch (err: any) {
       toast.error(err.message || 'حدث خطأ');
@@ -171,15 +197,16 @@ const TeacherDashboard = () => {
 
               <div className="mb-4 flex gap-2">
                 <Input
-                  placeholder="معرف الطالب..."
-                  value={studentId}
-                  onChange={(e) => setStudentId(e.target.value)}
+                  placeholder="البريد الإلكتروني للطالب..."
+                  value={studentEmail}
+                  onChange={(e) => setStudentEmail(e.target.value)}
                   className="text-sm"
+                  type="email"
                 />
                 <Button
                   size="sm"
-                  onClick={handleAddStudentById}
-                  disabled={!studentId.trim()}
+                  onClick={handleAddStudentByEmail}
+                  disabled={!studentEmail.trim()}
                 >
                   <Plus className="h-4 w-4" />
                 </Button>
@@ -194,11 +221,10 @@ const TeacherDashboard = () => {
                 {students.map(s => (
                   <div
                     key={s.student_id}
-                    className={`flex items-center justify-between rounded-xl border p-3 transition-all cursor-pointer ${
-                      selectedStudent === s.student_id
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border hover:border-primary/30'
-                    }`}
+                    className={`flex items-center justify-between rounded-xl border p-3 transition-all cursor-pointer ${selectedStudent === s.student_id
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border hover:border-primary/30'
+                      }`}
                     onClick={() => loadStudentWritings(s.student_id)}
                   >
                     <div className="min-w-0 flex-1">
@@ -280,6 +306,29 @@ const TeacherDashboard = () => {
                         </Button>
                       </div>
                     </div>
+
+                    {/* Tab navigation */}
+                    <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-border">
+                      {[
+                        { id: 'writings', label: 'الكتابات', icon: FileText },
+                        { id: 'progress', label: 'التقدم', icon: BookOpen },
+                        { id: 'achievements', label: 'الإنجازات', icon: Trophy },
+                        { id: 'performance', label: 'الأداء', icon: BarChart3 },
+                        { id: 'chat', label: 'المحادثة', icon: MessageCircle },
+                      ].map((tab) => (
+                        <button
+                          key={tab.id}
+                          onClick={() => setActiveTab(tab.id as any)}
+                          className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition-all ${activeTab === tab.id
+                            ? 'bg-primary text-primary-foreground'
+                            : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                            }`}
+                        >
+                          <tab.icon className="h-3.5 w-3.5" />
+                          {tab.label}
+                        </button>
+                      ))}
+                    </div>
                   </motion.div>
                 )}
 
@@ -297,111 +346,137 @@ const TeacherDashboard = () => {
                   </motion.div>
                 )}
 
-                {/* Writings list */}
-                <div className="rounded-2xl border border-border bg-card p-6">
-                  <h3 className="mb-4 font-amiri text-lg font-bold text-foreground flex items-center gap-2">
-                    <FileText className="h-5 w-5 text-primary" />
-                    كتابات الطالب ({studentWritings.length})
-                  </h3>
+                {/* Tab Content */}
+                {activeTab === 'progress' && selectedStudent && (
+                  <StudentProgressTab
+                    studentId={selectedStudent}
+                    writingStyle={selectedStudentProfile?.writing_style || undefined}
+                  />
+                )}
 
-                  {studentWritings.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">لم يكتب هذا الطالب شيئًا بعد</p>
-                  ) : (
-                    <div className="space-y-3">
-                      {studentWritings.map(w => (
-                        <motion.button
-                          key={w.id}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          onClick={() => setSelectedWriting(w)}
-                          className={`w-full rounded-xl border p-4 text-right transition-all ${
-                            selectedWriting?.id === w.id
-                              ? 'border-primary bg-primary/5'
-                              : 'border-border hover:border-primary/30'
-                          }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm font-bold text-foreground">{w.title}</p>
-                              <p className="text-xs text-muted-foreground mt-1">
-                                {new Date(w.created_at).toLocaleDateString('ar')}
-                              </p>
+                {activeTab === 'achievements' && selectedStudent && (
+                  <StudentAchievementsTab studentId={selectedStudent} />
+                )}
+
+                {activeTab === 'performance' && selectedStudent && (
+                  <StudentPerformanceTab studentId={selectedStudent} />
+                )}
+
+                {activeTab === 'chat' && selectedStudent && (
+                  <TeacherStudentChat
+                    otherUserId={selectedStudent}
+                    otherUserName={selectedStudentProfile?.full_name}
+                  />
+                )}
+
+                {activeTab === 'writings' && (
+                  <>
+                    {/* Writings list */}
+                    <div className="rounded-2xl border border-border bg-card p-6">
+                      <h3 className="mb-4 font-amiri text-lg font-bold text-foreground flex items-center gap-2">
+                        <FileText className="h-5 w-5 text-primary" />
+                        كتابات الطالب ({studentWritings.length})
+                      </h3>
+
+                      {studentWritings.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">لم يكتب هذا الطالب شيئًا بعد</p>
+                      ) : (
+                        <div className="space-y-3">
+                          {studentWritings.map(w => (
+                            <motion.button
+                              key={w.id}
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              onClick={() => setSelectedWriting(w)}
+                              className={`w-full rounded-xl border p-4 text-right transition-all ${selectedWriting?.id === w.id
+                                ? 'border-primary bg-primary/5'
+                                : 'border-border hover:border-primary/30'
+                                }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-sm font-bold text-foreground">{w.title}</p>
+                                  <p className="text-xs text-muted-foreground mt-1">
+                                    {new Date(w.created_at).toLocaleDateString('ar')}
+                                  </p>
+                                </div>
+                                {w.evaluation && (
+                                  <div className="flex gap-3 text-xs">
+                                    <span className={scoreColor(w.evaluation.word_precision)}>
+                                      <Target className="inline h-3 w-3 ml-0.5" />
+                                      {Number(w.evaluation.word_precision).toFixed(1)}
+                                    </span>
+                                    <span className={scoreColor(w.evaluation.feeling_depth)}>
+                                      <Heart className="inline h-3 w-3 ml-0.5" />
+                                      {Number(w.evaluation.feeling_depth).toFixed(1)}
+                                    </span>
+                                    <span className={scoreColor(w.evaluation.linguistic_identity)}>
+                                      <Fingerprint className="inline h-3 w-3 ml-0.5" />
+                                      {Number(w.evaluation.linguistic_identity).toFixed(1)}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </motion.button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Selected writing detail */}
+                    {selectedWriting && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="rounded-2xl border border-border bg-card p-6 space-y-5"
+                      >
+                        <h3 className="font-amiri text-xl font-bold text-primary">{selectedWriting.title}</h3>
+                        <p className="text-sm leading-[2] text-foreground whitespace-pre-line rounded-xl bg-background border border-border p-4">
+                          {selectedWriting.content}
+                        </p>
+
+                        {selectedWriting.evaluation && (
+                          <div className="space-y-5 border-t border-border pt-5">
+                            <h4 className="font-bold text-foreground flex items-center gap-2">
+                              <BarChart3 className="h-4 w-4 text-primary" />
+                              تقرير الذكاء الاصطناعي
+                            </h4>
+                            <div className="flex flex-wrap justify-center gap-6">
+                              <ScoreGauge
+                                label="دقة الكلمات"
+                                value={selectedWriting.evaluation.word_precision}
+                                icon={Target}
+                              />
+                              <ScoreGauge
+                                label="عمق المشاعر"
+                                value={selectedWriting.evaluation.feeling_depth}
+                                icon={Heart}
+                              />
+                              <ScoreGauge
+                                label="الهوية اللغوية"
+                                value={selectedWriting.evaluation.linguistic_identity}
+                                icon={Fingerprint}
+                              />
                             </div>
-                            {w.evaluation && (
-                              <div className="flex gap-3 text-xs">
-                                <span className={scoreColor(w.evaluation.word_precision)}>
-                                  <Target className="inline h-3 w-3 ml-0.5" />
-                                  {Number(w.evaluation.word_precision).toFixed(1)}
-                                </span>
-                                <span className={scoreColor(w.evaluation.feeling_depth)}>
-                                  <Heart className="inline h-3 w-3 ml-0.5" />
-                                  {Number(w.evaluation.feeling_depth).toFixed(1)}
-                                </span>
-                                <span className={scoreColor(w.evaluation.linguistic_identity)}>
-                                  <Fingerprint className="inline h-3 w-3 ml-0.5" />
-                                  {Number(w.evaluation.linguistic_identity).toFixed(1)}
-                                </span>
+                            {selectedWriting.evaluation.feedback && (
+                              <div className="rounded-xl bg-emerald-light/50 border border-primary/20 p-4">
+                                <p className="text-sm text-muted-foreground whitespace-pre-line">
+                                  {selectedWriting.evaluation.feedback}
+                                </p>
+                              </div>
+                            )}
+                            {selectedWriting.evaluation.suggestions && (
+                              <div className="rounded-xl bg-gold-light/50 border border-accent/20 p-4">
+                                <p className="text-sm text-muted-foreground whitespace-pre-line">
+                                  {selectedWriting.evaluation.suggestions}
+                                </p>
                               </div>
                             )}
                           </div>
-                        </motion.button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Selected writing detail */}
-                {selectedWriting && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="rounded-2xl border border-border bg-card p-6 space-y-5"
-                  >
-                    <h3 className="font-amiri text-xl font-bold text-primary">{selectedWriting.title}</h3>
-                    <p className="text-sm leading-[2] text-foreground whitespace-pre-line rounded-xl bg-background border border-border p-4">
-                      {selectedWriting.content}
-                    </p>
-
-                    {selectedWriting.evaluation && (
-                      <div className="space-y-5 border-t border-border pt-5">
-                        <h4 className="font-bold text-foreground flex items-center gap-2">
-                          <BarChart3 className="h-4 w-4 text-primary" />
-                          تقرير الذكاء الاصطناعي
-                        </h4>
-                        <div className="flex flex-wrap justify-center gap-6">
-                          <ScoreGauge
-                            label="دقة الكلمات"
-                            value={selectedWriting.evaluation.word_precision}
-                            icon={Target}
-                          />
-                          <ScoreGauge
-                            label="عمق المشاعر"
-                            value={selectedWriting.evaluation.feeling_depth}
-                            icon={Heart}
-                          />
-                          <ScoreGauge
-                            label="الهوية اللغوية"
-                            value={selectedWriting.evaluation.linguistic_identity}
-                            icon={Fingerprint}
-                          />
-                        </div>
-                        {selectedWriting.evaluation.feedback && (
-                          <div className="rounded-xl bg-emerald-light/50 border border-primary/20 p-4">
-                            <p className="text-sm text-muted-foreground whitespace-pre-line">
-                              {selectedWriting.evaluation.feedback}
-                            </p>
-                          </div>
                         )}
-                        {selectedWriting.evaluation.suggestions && (
-                          <div className="rounded-xl bg-gold-light/50 border border-accent/20 p-4">
-                            <p className="text-sm text-muted-foreground whitespace-pre-line">
-                              {selectedWriting.evaluation.suggestions}
-                            </p>
-                          </div>
-                        )}
-                      </div>
+                      </motion.div>
                     )}
-                  </motion.div>
+                  </>
                 )}
               </div>
             )}

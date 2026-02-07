@@ -1,15 +1,19 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ClipboardCheck, CheckCircle2, XCircle, ArrowLeft, Award, RotateCcw } from 'lucide-react';
+import { ClipboardCheck, CheckCircle2, XCircle, ArrowLeft, Award, RotateCcw, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Header from '@/components/Header';
 import { useWriter } from '@/contexts/WriterContext';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 import { conceptQuiz, elementsQuiz } from '@/data/quizzes';
+import { toast } from 'sonner';
 import type { QuizQuestion } from '@/types/writer';
 
 const Assessment = () => {
   const { profile } = useWriter();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const { type } = useParams<{ type: string }>();
 
@@ -19,6 +23,7 @@ const Assessment = () => {
   const [score, setScore] = useState(0);
   const [answered, setAnswered] = useState<boolean[]>([]);
   const [quizDone, setQuizDone] = useState(false);
+  const [progressSaved, setProgressSaved] = useState(false);
 
   useEffect(() => {
     if (!profile) navigate('/style-test');
@@ -50,19 +55,75 @@ const Assessment = () => {
     setAnswered(prev => [...prev, isCorrect]);
   };
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (currentQ < questions.length - 1) {
       setCurrentQ(prev => prev + 1);
       setSelectedAnswer(null);
       setShowResult(false);
     } else {
       setQuizDone(true);
+      // Calculate final score - answered array already includes all answers
+      const finalScore = answered.reduce((acc, curr) => acc + (curr ? 1 : 0), 0) + (selectedAnswer === question.correctIndex ? 1 : 0);
+      const finalPercent = Math.round((finalScore / questions.length) * 100);
+
+      // Save progress if passed
+      if (finalPercent >= 60 && user && profile) {
+        await saveProgress(finalPercent);
+      }
+    }
+  };
+
+  const saveProgress = async (scorePercent: number) => {
+    if (!user || !profile || progressSaved) {
+      console.log('saveProgress skipped:', { user: !!user, profile: !!profile, progressSaved });
+      return;
+    }
+
+    try {
+      const lessonIndex = isConcept ? 0 : 1;
+      console.log('Saving progress:', {
+        user_id: user.id,
+        lesson_index: lessonIndex,
+        writing_style: profile.style,
+        score: scorePercent,
+      });
+
+      const { data, error } = await (supabase as any)
+        .from('student_lesson_progress')
+        .upsert({
+          user_id: user.id,
+          lesson_index: lessonIndex,
+          writing_style: profile.style,
+          completed: true,
+          score: scorePercent,
+          completed_at: new Date().toISOString(),
+        }, {
+          onConflict: 'user_id,writing_style,lesson_index'
+        })
+        .select();
+
+      if (error) {
+        console.error('Error saving progress:', error);
+        toast.error('خطأ في حفظ التقدم: ' + error.message);
+      } else {
+        console.log('Progress saved successfully:', data);
+        setProgressSaved(true);
+        toast.success('🎉 تم حفظ تقدمك!');
+      }
+    } catch (err: any) {
+      console.error('Error saving progress:', err);
+      toast.error('خطأ: ' + (err.message || 'حدث خطأ غير متوقع'));
     }
   };
 
   const getNextRoute = () => {
     if (isConcept) return '/lesson/1';
     return '/lesson/2';
+  };
+
+  const getLessonCount = () => {
+    // Return total lessons in current path
+    return 3; // Assuming 3 lessons per style
   };
 
   const scorePercent = Math.round((score / questions.length) * 100);
@@ -75,6 +136,7 @@ const Assessment = () => {
     setScore(0);
     setAnswered([]);
     setQuizDone(false);
+    setProgressSaved(false);
   };
 
   return (
@@ -153,18 +215,16 @@ const Assessment = () => {
                         key={oIdx}
                         onClick={() => handleAnswer(oIdx)}
                         disabled={showResult}
-                        className={`w-full rounded-xl border-2 ${borderClass} ${bgClass} p-4 text-right transition-all ${
-                          !showResult ? 'cursor-pointer' : ''
-                        }`}
+                        className={`w-full rounded-xl border-2 ${borderClass} ${bgClass} p-4 text-right transition-all ${!showResult ? 'cursor-pointer' : ''
+                          }`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 ${
-                            showResult && oIdx === question.correctIndex
-                              ? 'border-primary bg-primary text-primary-foreground'
-                              : showResult && oIdx === selectedAnswer
-                                ? 'border-destructive bg-destructive text-destructive-foreground'
-                                : 'border-border bg-muted'
-                          }`}>
+                          <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 ${showResult && oIdx === question.correctIndex
+                            ? 'border-primary bg-primary text-primary-foreground'
+                            : showResult && oIdx === selectedAnswer
+                              ? 'border-destructive bg-destructive text-destructive-foreground'
+                              : 'border-border bg-muted'
+                            }`}>
                             {showResult && oIdx === question.correctIndex ? (
                               <CheckCircle2 className="h-4 w-4" />
                             ) : showResult && oIdx === selectedAnswer && oIdx !== question.correctIndex ? (
@@ -185,11 +245,10 @@ const Assessment = () => {
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className={`rounded-xl p-4 mb-6 ${
-                      selectedAnswer === question.correctIndex
-                        ? 'bg-primary/10 border border-primary/20'
-                        : 'bg-accent/10 border border-accent/20'
-                    }`}
+                    className={`rounded-xl p-4 mb-6 ${selectedAnswer === question.correctIndex
+                      ? 'bg-primary/10 border border-primary/20'
+                      : 'bg-accent/10 border border-accent/20'
+                      }`}
                   >
                     <p className="text-sm font-bold text-foreground mb-1">
                       {selectedAnswer === question.correctIndex ? '✅ إجابة صحيحة!' : '💡 الإجابة الصحيحة:'}
@@ -229,6 +288,18 @@ const Assessment = () => {
                   {score} من {questions.length} إجابات صحيحة
                 </p>
 
+                {/* Progress Saved Badge */}
+                {passed && progressSaved && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary mb-4"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    تم حفظ تقدمك في الدرس {isConcept ? '1' : '2'}!
+                  </motion.div>
+                )}
+
                 {/* Answer Summary */}
                 <div className="flex justify-center gap-2 my-6">
                   {answered.map((correct, i) => (
@@ -241,7 +312,7 @@ const Assessment = () => {
 
                 <p className="text-sm text-muted-foreground mb-8">
                   {passed
-                    ? 'لقد أثبتت فهمك الجيد! يمكنك الانتقال إلى الدرس التالي.'
+                    ? `ممتاز! أكملت الدرس ${isConcept ? 'الأول' : 'الثاني'}. هل أنت مستعد للدرس التالي؟`
                     : 'لا بأس! راجع الدرس وحاول مرة أخرى. التعلم رحلة وليس سباقًا.'}
                 </p>
 

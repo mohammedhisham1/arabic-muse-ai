@@ -17,6 +17,7 @@ import TeacherDashboard from "./pages/TeacherDashboard";
 import AdminDashboard from "./pages/AdminDashboard";
 import FinalOutputs from "./pages/FinalOutputs";
 import Settings from "./pages/Settings";
+import StudentChat from "./pages/StudentChat";
 import ProtectedRoute from "./components/ProtectedRoute";
 import NotFound from "./pages/NotFound";
 
@@ -75,6 +76,14 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <Settings />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/student-chat"
+              element={
+                <ProtectedRoute requiredRole="student">
+                  <StudentChat />
                 </ProtectedRoute>
               }
             />

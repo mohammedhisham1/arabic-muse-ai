@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ClipboardList, BarChart3, BookOpen, GraduationCap, PenTool, Users, Award } from 'lucide-react';
 import Header from '@/components/Header';
 import HeroSection from '@/components/HeroSection';
+import TeacherFeedbackSection from '@/components/TeacherFeedbackSection';
 import { useAuth } from '@/hooks/useAuth';
 
 const phases = [
@@ -80,6 +81,9 @@ const Index = () => {
       <Header />
       <main>
         <HeroSection />
+
+        {/* Teacher Feedback for Students */}
+        <TeacherFeedbackSection />
 
         {/* All 7 Phases */}
         <section id="features" className="py-24">
