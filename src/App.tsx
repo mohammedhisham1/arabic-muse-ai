@@ -38,7 +38,7 @@ const App = () => (
             <Route path="/writing-models" element={<WritingModels />} />
             <Route path="/learning-path" element={<LearningPath />} />
             <Route path="/lesson/:lessonIndex" element={<LessonView />} />
-            <Route path="/assessment/:type" element={<Assessment />} />
+            <Route path="/assessment/:lessonId" element={<Assessment />} />
             <Route
               path="/creative-writing"
               element={

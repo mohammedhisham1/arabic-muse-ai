@@ -1,21 +1,26 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ClipboardCheck, CheckCircle2, XCircle, ArrowLeft, Award, RotateCcw, Sparkles } from 'lucide-react';
+import { ClipboardCheck, CheckCircle2, XCircle, ArrowLeft, Award, RotateCcw, Sparkles, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Header from '@/components/Header';
+import StyleTestRequired from '@/components/StyleTestRequired';
 import { useWriter } from '@/contexts/WriterContext';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
-import { conceptQuiz, elementsQuiz } from '@/data/quizzes';
 import { toast } from 'sonner';
 import type { QuizQuestion } from '@/types/writer';
 
 const Assessment = () => {
-  const { profile } = useWriter();
+  const { profile, loadingProfile } = useWriter();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { type } = useParams<{ type: string }>();
+  const { lessonId } = useParams<{ lessonId: string }>();
+  const currentLessonIndex = parseInt(lessonId || '0', 10);
+
+  const [questions, setQuestions] = useState<QuizQuestion[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [currentQ, setCurrentQ] = useState(0);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
@@ -24,27 +29,66 @@ const Assessment = () => {
   const [answered, setAnswered] = useState<boolean[]>([]);
   const [quizDone, setQuizDone] = useState(false);
   const [progressSaved, setProgressSaved] = useState(false);
+  const [lessonTitle, setLessonTitle] = useState('');
+
 
   useEffect(() => {
-    if (!profile) navigate('/style-test');
-  }, [profile, navigate]);
+    if (user && profile) {
+      fetchQuiz();
+    }
+  }, [currentLessonIndex, user, profile]);
 
-  useEffect(() => {
-    setCurrentQ(0);
-    setSelectedAnswer(null);
-    setShowResult(false);
-    setScore(0);
-    setAnswered([]);
-    setQuizDone(false);
-  }, [type]);
+  const fetchQuiz = async () => {
+    try {
+      setLoading(true);
+      // Fetch the generated lesson to get the quiz
+      const { data, error } = await (supabase as any)
+        .from('generated_lessons')
+        .select('quiz, title')
+        .eq('user_id', user?.id)
+        .eq('lesson_index', currentLessonIndex)
+        .maybeSingle();
 
-  if (!profile) return null;
+      if (data && data.quiz) {
+        setQuestions(data.quiz);
+        setLessonTitle(data.title);
+        // Reset quiz state
+        setCurrentQ(0);
+        setSelectedAnswer(null);
+        setShowResult(false);
+        setScore(0);
+        setAnswered([]);
+        setQuizDone(false);
+        setProgressSaved(false);
+      } else {
+        // If lesson doesn't exist, redirect to lesson view to generate it
+        toast.error('لم يتم العثور على الاختبار. جاري توجيهك للدرس...');
+        navigate(`/lesson/${currentLessonIndex}`);
+      }
+    } catch (error) {
+      console.error('Error fetching quiz:', error);
+      toast.error('حدث خطأ أثناء تحميل الاختبار');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  const isConcept = type === 'concept';
-  const questions: QuizQuestion[] = isConcept ? conceptQuiz : elementsQuiz;
+  if (loadingProfile) return null;
+  if (!profile) return <StyleTestRequired />;
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center">
+        <Header />
+        <Loader2 className="h-10 w-10 animate-spin text-primary mb-4" />
+        <p className="text-muted-foreground">جاري تحميل الاختبار...</p>
+      </div>
+    );
+  }
+
+  if (questions.length === 0) return null; // Should have redirected
+
   const question = questions[currentQ];
-
-  const quizTitle = isConcept ? 'اختبار مفهوم القصة الإبداعية' : 'اختبار عناصر القصة الإبداعية';
 
   const handleAnswer = (answerIdx: number) => {
     if (showResult) return;
@@ -62,7 +106,7 @@ const Assessment = () => {
       setShowResult(false);
     } else {
       setQuizDone(true);
-      // Calculate final score - answered array already includes all answers
+      // Calculate final score
       const finalScore = answered.reduce((acc, curr) => acc + (curr ? 1 : 0), 0) + (selectedAnswer === question.correctIndex ? 1 : 0);
       const finalPercent = Math.round((finalScore / questions.length) * 100);
 
@@ -74,56 +118,39 @@ const Assessment = () => {
   };
 
   const saveProgress = async (scorePercent: number) => {
-    if (!user || !profile || progressSaved) {
-      console.log('saveProgress skipped:', { user: !!user, profile: !!profile, progressSaved });
-      return;
-    }
+    if (!user || !profile || progressSaved) return;
 
     try {
-      const lessonIndex = isConcept ? 0 : 1;
-      console.log('Saving progress:', {
-        user_id: user.id,
-        lesson_index: lessonIndex,
-        writing_style: profile.style,
-        score: scorePercent,
-      });
-
-      const { data, error } = await (supabase as any)
+      console.log('Saving progress for lesson:', currentLessonIndex, 'Score:', scorePercent);
+      const { error } = await (supabase as any)
         .from('student_lesson_progress')
         .upsert({
           user_id: user.id,
-          lesson_index: lessonIndex,
+          lesson_index: currentLessonIndex,
           writing_style: profile.style,
           completed: true,
           score: scorePercent,
           completed_at: new Date().toISOString(),
         }, {
           onConflict: 'user_id,writing_style,lesson_index'
-        })
-        .select();
+        });
 
       if (error) {
         console.error('Error saving progress:', error);
-        toast.error('خطأ في حفظ التقدم: ' + error.message);
+        toast.error('خطأ في حفظ التقدم');
       } else {
-        console.log('Progress saved successfully:', data);
         setProgressSaved(true);
         toast.success('🎉 تم حفظ تقدمك!');
       }
     } catch (err: any) {
       console.error('Error saving progress:', err);
-      toast.error('خطأ: ' + (err.message || 'حدث خطأ غير متوقع'));
     }
   };
 
   const getNextRoute = () => {
-    if (isConcept) return '/lesson/1';
-    return '/lesson/2';
-  };
-
-  const getLessonCount = () => {
-    // Return total lessons in current path
-    return 3; // Assuming 3 lessons per style
+    // Determine next route dynamically
+    // For now, just increment lesson index
+    return `/lesson/${currentLessonIndex + 1}`;
   };
 
   const scorePercent = Math.round((score / questions.length) * 100);
@@ -153,10 +180,10 @@ const Assessment = () => {
           <div className="mb-8 text-center">
             <span className="inline-flex items-center gap-2 rounded-full bg-accent/10 px-4 py-1.5 text-sm font-medium text-accent-foreground">
               <ClipboardCheck className="h-4 w-4 text-accent" />
-              {isConcept ? 'اختبار المفهوم' : 'اختبار العناصر'}
+              اختبار: {lessonTitle}
             </span>
             <h1 className="mt-4 font-amiri text-3xl font-bold text-foreground">
-              {quizTitle}
+              اختبار الفهم والاستيعاب
             </h1>
             {!quizDone && (
               <p className="mt-2 text-muted-foreground">
@@ -187,7 +214,7 @@ const Assessment = () => {
                 className="rounded-2xl border border-border bg-card p-8"
               >
                 {/* Question */}
-                <h2 className="font-amiri text-xl font-bold text-foreground mb-6">
+                <h2 className="font-amiri text-xl font-bold text-foreground mb-6 leading-relaxed">
                   {question.question}
                 </h2>
 
@@ -296,7 +323,7 @@ const Assessment = () => {
                     className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary mb-4"
                   >
                     <Sparkles className="h-4 w-4" />
-                    تم حفظ تقدمك في الدرس {isConcept ? '1' : '2'}!
+                    تم حفظ تقدمك في الدرس {currentLessonIndex + 1}!
                   </motion.div>
                 )}
 
@@ -312,7 +339,7 @@ const Assessment = () => {
 
                 <p className="text-sm text-muted-foreground mb-8">
                   {passed
-                    ? `ممتاز! أكملت الدرس ${isConcept ? 'الأول' : 'الثاني'}. هل أنت مستعد للدرس التالي؟`
+                    ? `ممتاز! أكملت الدرس ${currentLessonIndex + 1}. هل أنت مستعد للدرس التالي؟`
                     : 'لا بأس! راجع الدرس وحاول مرة أخرى. التعلم رحلة وليس سباقًا.'}
                 </p>
 
@@ -338,7 +365,7 @@ const Assessment = () => {
                   )}
                   <Button
                     variant="outline"
-                    onClick={() => navigate(`/lesson/${isConcept ? '0' : '1'}`)}
+                    onClick={() => navigate(`/lesson/${currentLessonIndex}`)}
                     className="gap-2"
                   >
                     العودة للدرس

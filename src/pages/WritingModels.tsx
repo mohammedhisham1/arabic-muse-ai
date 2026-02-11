@@ -1,9 +1,10 @@
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { BookOpen, Tag, MessageSquare, Users, Swords, GraduationCap, Highlighter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Header from '@/components/Header';
+import StyleTestRequired from '@/components/StyleTestRequired';
 import { useWriter } from '@/contexts/WriterContext';
 import { styleData } from '@/data/styles';
 import { styleHighlights } from '@/data/highlights';
@@ -86,14 +87,13 @@ function HighlightedText({ content, phrases }: {
 }
 
 const WritingModels = () => {
-  const { profile } = useWriter();
+  const { profile, loadingProfile } = useWriter();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (!profile) navigate('/style-test');
-  }, [profile, navigate]);
 
-  if (!profile) return null;
+
+  if (loadingProfile) return null;
+  if (!profile) return <StyleTestRequired />;
 
   const info = styleData[profile.style];
   const { sampleText } = info;

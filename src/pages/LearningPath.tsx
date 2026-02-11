@@ -1,9 +1,11 @@
+
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Target, Lock, CheckCircle2, BookOpen, ArrowRight, Play, Trophy } from 'lucide-react';
+import { Target, Lock, CheckCircle2, BookOpen, ArrowRight, Play, Trophy, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Header from '@/components/Header';
+import StyleTestRequired from '@/components/StyleTestRequired';
 import { useWriter } from '@/contexts/WriterContext';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,16 +17,43 @@ interface LessonProgress {
   score: number | null;
 }
 
+const LESSON_TOPICS = [
+  {
+    title: "أساسيات الكتابة الإبداعية",
+    desc: "مفهوم القصة، أهمية السرد، والفرق بين الوصف والحكي.",
+  },
+  {
+    title: "بناء الشخصيات",
+    desc: "الدوافع النفسية، التطور عبر الأحداث، وخلق شخصيات ثلاثية الأبعاد.",
+  },
+  {
+    title: "الحبكة والصراع",
+    desc: "أنواع الصراع (داخلي/خارجي)، منحنيات السرد، ونقطة الذروة.",
+  },
+  {
+    title: "المكان والزمان",
+    desc: "كيف يؤثر الإطار السردي على الشخصيات والمشاعر.",
+  },
+  {
+    title: "الحوار والسرد",
+    desc: "كتابة حوار واقعي، الموازنة بين السرد والحوار، والأصوات المتعددة.",
+  },
+  {
+    title: "الخيال والتصوير",
+    desc: "استخدام اللغة المجازية، الاستعارة، وبناء الصور الذهنية.",
+  },
+  {
+    title: "نهاية القصة",
+    desc: "كيفية كتابة نهاية مؤثرة وتجنب الكليشيهات.",
+  }
+];
+
 const LearningPath = () => {
-  const { profile, reset } = useWriter();
+  const { profile, reset, loadingProfile } = useWriter();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [progress, setProgress] = useState<LessonProgress[]>([]);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!profile) navigate('/style-test');
-  }, [profile, navigate]);
 
   useEffect(() => {
     if (user && profile) {
@@ -56,7 +85,8 @@ const LearningPath = () => {
     }
   };
 
-  if (!profile) return null;
+  if (loadingProfile) return null;
+  if (!profile) return <StyleTestRequired />;
 
   const info = styleData[profile.style];
 
@@ -71,19 +101,17 @@ const LearningPath = () => {
 
   const isLessonUnlocked = (idx: number): boolean => {
     if (idx === 0) return true; // First lesson always unlocked
-    // Lesson is unlocked if the previous lesson is completed
     return isLessonCompleted(idx - 1);
   };
 
   const getNextLesson = (): number => {
-    // Find first incomplete lesson
-    for (let i = 0; i < info.lessons.length; i++) {
+    for (let i = 0; i < LESSON_TOPICS.length; i++) {
       if (!isLessonCompleted(i)) return i;
     }
-    return info.lessons.length - 1; // All completed, return last
+    return LESSON_TOPICS.length - 1;
   };
 
-  const allLessonsCompleted = info.lessons.every((_, idx) => isLessonCompleted(idx));
+  const allLessonsCompleted = LESSON_TOPICS.every((_, idx) => isLessonCompleted(idx));
 
   return (
     <div className="min-h-screen bg-background">
@@ -104,14 +132,13 @@ const LearningPath = () => {
               مسار التعلم المتفرع
             </h1>
             <p className="mt-3 text-muted-foreground">
-              سيتقن الطالب المفاهيم والعناصر الأساسية للكتابة الإبداعية وفق أسلوبه الخاص
+              يتم إنشاء الدروس خصيصًا لك بواسطة الذكاء الاصطناعي لتناسب أسلوبك الفريد
             </p>
 
-            {/* Progress Summary */}
             {!loading && (
               <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary">
                 <Trophy className="h-4 w-4" />
-                التقدم: {progress.filter(p => p.completed).length} من {info.lessons.length} دروس
+                التقدم: {progress.filter(p => p.completed).length} من {LESSON_TOPICS.length} دروس
               </div>
             )}
           </div>
@@ -143,7 +170,7 @@ const LearningPath = () => {
             <div className="absolute right-8 top-0 h-full w-0.5 bg-border" />
 
             <div className="space-y-8">
-              {info.lessons.map((lesson, idx) => {
+              {LESSON_TOPICS.map((lesson, idx) => {
                 const completed = isLessonCompleted(idx);
                 const unlocked = isLessonUnlocked(idx);
                 const score = getLessonScore(idx);
@@ -187,9 +214,12 @@ const LearningPath = () => {
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
                           <BookOpen className={`h-5 w-5 ${completed ? 'text-primary' : unlocked ? 'text-accent' : 'text-muted-foreground'}`} />
-                          <h3 className="font-amiri text-lg font-bold text-foreground">
-                            الدرس {idx + 1}: {lesson.title}
-                          </h3>
+                          <div>
+                            <h3 className="font-amiri text-lg font-bold text-foreground">
+                              الدرس {idx + 1}: {lesson.title}
+                            </h3>
+                            <p className="text-xs text-muted-foreground font-normal">{lesson.desc}</p>
+                          </div>
                         </div>
                         {completed && score !== null && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs font-bold text-primary">
@@ -199,26 +229,8 @@ const LearningPath = () => {
                         )}
                       </div>
 
-                      <div className="mb-4">
-                        <p className="text-xs font-bold text-muted-foreground mb-2">
-                          أهداف الدرس — سيتقن الطالب:
-                        </p>
-                        <ul className="space-y-1.5">
-                          {lesson.objectives.map((obj, oIdx) => (
-                            <li
-                              key={oIdx}
-                              className="flex items-start gap-2 text-sm text-muted-foreground"
-                            >
-                              <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${completed ? 'bg-primary' : unlocked ? 'bg-accent' : 'bg-muted-foreground/40'
-                                }`} />
-                              {obj}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-
                       {completed && (
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-3 mt-4">
                           <span className="flex items-center gap-1 text-xs font-bold text-primary">
                             <CheckCircle2 className="h-3.5 w-3.5" />
                             مكتمل
@@ -235,19 +247,21 @@ const LearningPath = () => {
                       )}
 
                       {unlocked && !completed && (
-                        <Button
-                          variant="hero"
-                          size="sm"
-                          className="gap-2"
-                          onClick={() => navigate(`/lesson/${idx}`)}
-                        >
-                          <Play className="h-4 w-4" />
-                          {isNext ? 'أكمل الدرس' : 'ابدأ الدرس'}
-                        </Button>
+                        <div className="mt-4">
+                          <Button
+                            variant="hero"
+                            size="sm"
+                            className="gap-2 w-full sm:w-auto"
+                            onClick={() => navigate(`/lesson/${idx}`)}
+                          >
+                            <Sparkles className="h-4 w-4" />
+                            {isNext ? 'توليد الدرس بالذكاء الاصطناعي' : 'ابدأ الدرس'}
+                          </Button>
+                        </div>
                       )}
 
                       {!unlocked && (
-                        <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <p className="flex items-center gap-1 text-xs text-muted-foreground mt-4">
                           <Lock className="h-3 w-3" />
                           يُفتح بعد إتمام الدرس السابق
                         </p>
@@ -259,7 +273,6 @@ const LearningPath = () => {
             </div>
           </div>
 
-          {/* Actions */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -273,16 +286,6 @@ const LearningPath = () => {
             >
               <ArrowRight className="h-4 w-4" />
               العودة للتقرير
-            </Button>
-            <Button
-              variant="ghost"
-              onClick={() => {
-                reset();
-                navigate('/style-test');
-              }}
-              className="gap-2"
-            >
-              إعادة الاختبار
             </Button>
           </motion.div>
         </motion.div>
