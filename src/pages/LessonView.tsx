@@ -266,17 +266,12 @@ const LessonView = () => {
                     <BookOpen className="h-5 w-5 text-accent" />
                     <h2 className="font-amiri text-2xl font-bold text-foreground">الشرح التفصيلي</h2>
                   </div>
-                  <div className="prose prose-lg dark:prose-invert max-w-none space-y-4">
-                    {typeof lesson.content?.explanation === 'string'
-                      ? lesson.content.explanation.split('\n').filter(p => p.trim()).map((paragraph, pIdx) => (
-                        <p key={pIdx} className="leading-loose text-foreground/90">
-                          {paragraph.trim()}
-                        </p>
-                      ))
-                      : <p className="leading-loose text-foreground/90">
-                        {JSON.stringify(lesson.content?.explanation || 'لم يتم توفير شرح تفصيلي.')}
-                      </p>
-                    }
+                  <div className="prose prose-lg dark:prose-invert max-w-none">
+                    <p className="whitespace-pre-wrap leading-loose text-foreground/90">
+                      {typeof lesson.content?.explanation === 'string'
+                        ? lesson.content.explanation
+                        : JSON.stringify(lesson.content?.explanation || 'لم يتم توفير شرح تفصيلي.')}
+                    </p>
                   </div>
                 </div>
 

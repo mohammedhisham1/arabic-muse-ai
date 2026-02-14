@@ -1,17 +1,22 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowRight, ArrowLeft, CheckCircle2 } from 'lucide-react';
+import { ArrowRight, ArrowLeft, CheckCircle2, RefreshCw, Undo2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Header from '@/components/Header';
 import StatementCard from '@/components/StatementCard';
 import { useWriter } from '@/contexts/WriterContext';
 import { shuffledStatements, STATEMENTS_PER_PAGE, TOTAL_PAGES } from '@/data/questionnaire';
+import { styleData } from '@/data/styles';
 
 const StyleTest = () => {
   const [currentPage, setCurrentPage] = useState(0);
-  const { answers, setAnswer, calculateProfile } = useWriter();
+  const { answers, setAnswer, calculateProfile, profile, reset, loadingProfile } = useWriter();
   const navigate = useNavigate();
+
+  // Show retake prompt if user already has a profile
+  const [showRetakePrompt, setShowRetakePrompt] = useState(true);
+  const hasExistingProfile = profile !== null;
 
   const pageStatements = shuffledStatements.slice(
     currentPage * STATEMENTS_PER_PAGE,
@@ -41,6 +46,121 @@ const StyleTest = () => {
   const handlePrev = () => {
     if (currentPage > 0) setCurrentPage(prev => prev - 1);
   };
+
+  const handleRetake = () => {
+    reset();
+    setCurrentPage(0);
+    setShowRetakePrompt(false);
+  };
+
+  const handleReturn = () => {
+    navigate(-1);
+  };
+
+  // Don't render anything while loading profile
+  if (loadingProfile) return null;
+
+  // Show retake prompt if user has existing profile
+  if (hasExistingProfile && showRetakePrompt) {
+    const info = styleData[profile.style];
+
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+
+        <main className="container mx-auto px-4 py-24">
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: 'easeOut' }}
+            className="mx-auto max-w-lg"
+          >
+            {/* Card */}
+            <div className="rounded-3xl border border-border bg-card p-8 sm:p-10 shadow-lg">
+              {/* Style icon & badge */}
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+                className="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-primary/10"
+              >
+                <span className="text-5xl">{info.icon}</span>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="text-center"
+              >
+                <h1 className="font-amiri text-2xl font-bold text-foreground sm:text-3xl mb-2">
+                  لقد أكملت الاختبار سابقًا
+                </h1>
+                <p className="text-muted-foreground leading-relaxed mb-1">
+                  نتيجتك الحالية هي:
+                </p>
+                <span className="inline-block rounded-full bg-primary/10 px-5 py-1.5 font-amiri text-lg font-bold text-primary">
+                  {info.name} {info.icon}
+                </span>
+              </motion.div>
+
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.45 }}
+                className="mt-6 text-center text-sm text-muted-foreground leading-relaxed"
+              >
+                هل ترغب في إعادة الاختبار لتحديث أسلوبك الكتابي، أم تفضّل العودة؟
+              </motion.p>
+
+              {/* Divider */}
+              <div className="my-8 h-px bg-border" />
+
+              {/* Action buttons */}
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.55 }}
+                className="flex flex-col gap-3 sm:flex-row sm:gap-4"
+              >
+                <Button
+                  variant="hero"
+                  size="lg"
+                  onClick={handleRetake}
+                  className="flex-1 gap-2 h-13"
+                  id="retake-test-btn"
+                >
+                  <RefreshCw className="h-5 w-5" />
+                  إعادة الاختبار
+                </Button>
+
+                <Button
+                  variant="outline"
+                  size="lg"
+                  onClick={handleReturn}
+                  className="flex-1 gap-2 h-13"
+                  id="return-btn"
+                >
+                  <Undo2 className="h-5 w-5" />
+                  العودة
+                </Button>
+              </motion.div>
+            </div>
+
+            {/* Subtle hint below card */}
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.7 }}
+              className="mt-6 text-center text-xs text-muted-foreground/60"
+            >
+              إعادة الاختبار ستُعيد تعيين إجاباتك السابقة
+            </motion.p>
+          </motion.div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

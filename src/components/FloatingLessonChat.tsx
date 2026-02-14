@@ -167,8 +167,8 @@ const FloatingLessonChat = ({ lessonTitle, lessonIndex, lessonContent }: Floatin
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 20, scale: 0.95 }}
                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                        className="fixed bottom-24 left-6 z-50 flex w-[360px] max-w-[calc(100vw-3rem)] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
-                        style={{ height: '480px' }}
+                        className="fixed bottom-24 left-6 z-50 flex w-[420px] max-w-[calc(100vw-3rem)] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl"
+                        style={{ height: '560px' }}
                     >
                         {/* Header */}
                         <div className="flex items-center gap-3 border-b border-border bg-primary/5 px-4 py-3">
