@@ -19,6 +19,7 @@ import FinalOutputs from "./pages/FinalOutputs";
 import Settings from "./pages/Settings";
 import StudentChat from "./pages/StudentChat";
 import ProtectedRoute from "./components/ProtectedRoute";
+import ProgramComponents from "./pages/ProgramComponents";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/program-components" element={<ProgramComponents />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/style-test" element={<StyleTest />} />
             <Route path="/style-report" element={<StyleReport />} />

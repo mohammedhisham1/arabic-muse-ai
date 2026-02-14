@@ -69,16 +69,26 @@ const HeroSection = () => {
               ابدأ اختبار الأسلوب
               <Sparkles className="h-5 w-5 mr-2" />
             </Button>
-            <Button
-              variant="outline"
-              size="lg"
-              className="h-14 px-10 text-lg"
-              onClick={() => {
-                document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
-              }}
-            >
-              تعرّف على المنصة
-            </Button>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                size="lg"
+                className="h-14 px-8 text-lg"
+                onClick={() => {
+                  document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+              >
+                تعرّف على البرنامج
+              </Button>
+              <Button
+                variant="outline"
+                size="lg"
+                className="h-14 px-8 text-lg border-accent/30 text-accent-foreground hover:bg-accent/10"
+                onClick={() => navigate('/program-components')}
+              >
+                مكونات البرنامج
+              </Button>
+            </div>
           </motion.div>
         </div>
       </div>

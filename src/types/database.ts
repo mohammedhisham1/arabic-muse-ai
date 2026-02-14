@@ -47,6 +47,7 @@ export interface WritingEvaluation {
   linguistic_identity: number;
   feedback: string | null;
   suggestions: string | null;
+  improved_text: string | null;
   created_at: string;
 }
 

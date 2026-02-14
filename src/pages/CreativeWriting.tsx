@@ -165,8 +165,8 @@ const CreativeWriting = () => {
                     key={w.id}
                     onClick={() => selectExistingWriting(w)}
                     className={`w-full rounded-lg border p-3 text-right transition-all ${selectedWriting === w.id
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border bg-background hover:border-primary/30'
+                      ? 'border-primary bg-primary/5'
+                      : 'border-border bg-background hover:border-primary/30'
                       }`}
                   >
                     <p className="text-sm font-bold text-foreground truncate">{w.title}</p>
@@ -291,6 +291,34 @@ const CreativeWriting = () => {
                     <p className="text-sm leading-relaxed text-muted-foreground whitespace-pre-line">
                       {evaluation.suggestions}
                     </p>
+                  </div>
+                )}
+
+                {/* Improved Text */}
+                {evaluation.improved_text && (
+                  <div className="rounded-xl bg-primary/5 border border-primary/20 p-5">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="font-bold text-foreground flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-primary" />
+                        النص المحسّن
+                      </h4>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs gap-1"
+                        onClick={() => {
+                          navigator.clipboard.writeText(evaluation.improved_text || '');
+                          toast.success('تم نسخ النص المحسّن');
+                        }}
+                      >
+                        نسخ النص
+                      </Button>
+                    </div>
+                    <div className="rounded-lg bg-background border border-border p-4">
+                      <p className="text-sm leading-[2] text-foreground whitespace-pre-line font-medium">
+                        {evaluation.improved_text}
+                      </p>
+                    </div>
                   </div>
                 )}
               </motion.div>

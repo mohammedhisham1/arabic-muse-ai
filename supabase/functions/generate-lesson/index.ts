@@ -38,8 +38,8 @@ serve(async (req) => {
         // 2. Determine lesson topic based on index
         const lessonTopics = [
             {
-                title: "أساسيات الكتابة الإبداعية",
-                focus: "مفهوم القصة، أهمية السرد، الفرق بين الوصف والحكي.",
+                title: "مفهوم السرد الإبداعي",
+                focus: "ما هو السرد الإبداعي، لماذا نحكي القصص، عناصر القصة الأساسية، وكيف يختلف السرد الإبداعي عن الكتابة العادية.",
             },
             {
                 title: "بناء الشخصيات",
@@ -67,7 +67,14 @@ serve(async (req) => {
             }
         ];
 
-        const topic = lessonTopics[lessonIndex % lessonTopics.length] || lessonTopics[0];
+        if (lessonIndex >= lessonTopics.length) {
+            return new Response(JSON.stringify({ error: 'لقد أكملت جميع الدروس المتاحة! انتقل إلى الكتابة الإبداعية.' }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            })
+        }
+
+        const topic = lessonTopics[lessonIndex];
 
         // 3. Generate content with Gemini
         const prompt = `

@@ -147,9 +147,14 @@ const Assessment = () => {
     }
   };
 
+  const TOTAL_LESSONS = 7;
+
+  const isLastLesson = currentLessonIndex >= TOTAL_LESSONS - 1;
+
   const getNextRoute = () => {
-    // Determine next route dynamically
-    // For now, just increment lesson index
+    if (isLastLesson) {
+      return '/creative-writing';
+    }
     return `/lesson/${currentLessonIndex + 1}`;
   };
 
@@ -339,7 +344,9 @@ const Assessment = () => {
 
                 <p className="text-sm text-muted-foreground mb-8">
                   {passed
-                    ? `ممتاز! أكملت الدرس ${currentLessonIndex + 1}. هل أنت مستعد للدرس التالي؟`
+                    ? isLastLesson
+                      ? '🎉 أحسنت! أكملت جميع الدروس. أنت جاهز للكتابة الإبداعية!'
+                      : `ممتاز! أكملت الدرس ${currentLessonIndex + 1}. هل أنت مستعد للدرس التالي؟`
                     : 'لا بأس! راجع الدرس وحاول مرة أخرى. التعلم رحلة وليس سباقًا.'}
                 </p>
 
@@ -351,7 +358,7 @@ const Assessment = () => {
                       className="gap-2"
                     >
                       <Award className="h-4 w-4" />
-                      الدرس التالي
+                      {isLastLesson ? 'ابدأ الكتابة الإبداعية' : 'الدرس التالي'}
                     </Button>
                   ) : (
                     <Button

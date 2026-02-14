@@ -41,8 +41,9 @@ ${content}
   "word_precision": <رقم من 0 إلى 10>,
   "feeling_depth": <رقم من 0 إلى 10>,
   "linguistic_identity": <رقم من 0 إلى 10>,
-  "feedback": "<ملاحظات تفصيلية بالعربية>",
-  "suggestions": "<اقتراحات للتحسين بالعربية>"
+  "feedback": "<ملاحظات تفصيلية بالعربية عن نقاط القوة والضعف>",
+  "suggestions": "<اقتراحات للتحسين بالعربية>",
+  "improved_text": "<النص كاملًا بعد تطبيق التحسينات والتصحيحات اللغوية والأسلوبية، مع الحفاظ على صوت الكاتب الأصلي>"
 }`;
 
     const aiResponse = await fetch(
@@ -56,7 +57,7 @@ ${content}
             temperature: 0.7,
             topK: 40,
             topP: 0.95,
-            maxOutputTokens: 1024,
+            maxOutputTokens: 2048,
           },
         }),
       }
@@ -97,6 +98,7 @@ ${content}
         linguistic_identity: Math.min(10, Math.max(0, Number(evaluation.linguistic_identity))),
         feedback: evaluation.feedback,
         suggestions: evaluation.suggestions,
+        improved_text: evaluation.improved_text || null,
       })
       .select()
       .single();
