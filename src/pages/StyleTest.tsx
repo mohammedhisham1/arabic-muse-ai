@@ -174,7 +174,7 @@ const StyleTest = () => {
                   id="return-btn"
                 >
                   <Undo2 className="h-5 w-5" />
-                  العودة
+                  العودة إلى الدرس
                 </Button>
               </motion.div>
             </div>

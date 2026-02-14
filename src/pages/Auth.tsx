@@ -254,10 +254,10 @@ const Auth = () => {
             {mode === 'register' && (
               <motion.div
                 key="register-fields"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                className="space-y-4 overflow-hidden"
+                initial={{ opacity: 0, height: 0, overflow: 'hidden' }}
+                animate={{ opacity: 1, height: "auto", transitionEnd: { overflow: 'visible' } }}
+                exit={{ opacity: 0, height: 0, overflow: 'hidden' }}
+                className="space-y-4 p-1 -m-1"
               >
                 <div className="relative">
                   <User className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
@@ -266,18 +266,6 @@ const Auth = () => {
                     placeholder="الاسم الكامل"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="pr-10"
-                    required
-                  />
-                </div>
-
-                <div className="relative">
-                  <Calendar className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="number"
-                    placeholder="السن"
-                    value={age}
-                    onChange={(e) => setAge(e.target.value)}
                     className="pr-10"
                     required
                   />
@@ -295,16 +283,30 @@ const Auth = () => {
                   />
                 </div>
 
-                <div className="relative">
-                  <Globe className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="text"
-                    placeholder="البلد"
-                    value={country}
-                    onChange={(e) => setCountry(e.target.value)}
-                    className="pr-10"
-                    required
-                  />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="relative">
+                    <Calendar className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="number"
+                      placeholder="السن"
+                      value={age}
+                      onChange={(e) => setAge(e.target.value)}
+                      className="pr-10"
+                      required
+                    />
+                  </div>
+
+                  <div className="relative">
+                    <Globe className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      type="text"
+                      placeholder="البلد"
+                      value={country}
+                      onChange={(e) => setCountry(e.target.value)}
+                      className="pr-10"
+                      required
+                    />
+                  </div>
                 </div>
               </motion.div>
             )}

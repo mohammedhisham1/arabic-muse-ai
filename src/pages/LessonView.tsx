@@ -291,17 +291,43 @@ const LessonView = () => {
                 className="space-y-8"
               >
                 {/* Detailed Explanation */}
-                <div className="rounded-2xl border border-border bg-card p-8">
-                  <div className="flex items-center gap-2 mb-6">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 mb-2">
                     <BookOpen className="h-5 w-5 text-accent" />
                     <h2 className="font-amiri text-2xl font-bold text-foreground">الشرح التفصيلي</h2>
                   </div>
-                  <div className="prose prose-lg dark:prose-invert max-w-none">
-                    <p className="whitespace-pre-wrap leading-loose text-foreground/90">
-                      {typeof lesson.content?.explanation === 'string'
-                        ? lesson.content.explanation
-                        : JSON.stringify(lesson.content?.explanation || 'لم يتم توفير شرح تفصيلي.')}
-                    </p>
+
+                  <div className="space-y-6">
+                    {typeof lesson.content?.explanation === 'string' ? (
+                      lesson.content.explanation.split(/\n\s*\n/).filter((p: string) => p.trim()).map((part: string, index: number) => {
+                        const styles = [
+                          'bg-primary/5 border-primary/20 hover:bg-primary/10',
+                          'bg-blue-500/5 border-blue-500/20 hover:bg-blue-500/10',
+                          'bg-emerald-500/5 border-emerald-500/20 hover:bg-emerald-500/10',
+                          'bg-amber-500/5 border-amber-500/20 hover:bg-amber-500/10',
+                          'bg-rose-500/5 border-rose-500/20 hover:bg-rose-500/10',
+                        ];
+                        const style = styles[index % styles.length];
+
+                        return (
+                          <motion.div
+                            key={index}
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: index * 0.1 }}
+                            className={`rounded-xl border-l-4 p-6 shadow-sm transition-colors ${style.replace('border-', 'border-l-')}`}
+                          >
+                            <p className="text-lg leading-loose text-foreground/90 font-medium">
+                              {part}
+                            </p>
+                          </motion.div>
+                        );
+                      })
+                    ) : (
+                      <p className="text-muted-foreground">
+                        {JSON.stringify(lesson.content?.explanation || 'لم يتم توفير شرح تفصيلي.')}
+                      </p>
+                    )}
                   </div>
                 </div>
 

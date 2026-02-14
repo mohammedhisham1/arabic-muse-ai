@@ -19,7 +19,53 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { title, content, style, writingId } = await req.json();
+    const { title, content, style, writingId, mode, targetText, originalText } = await req.json();
+
+    if (mode === 'rewrite_feedback') {
+      if (!content || !targetText) throw new Error('Missing content or targetText for feedback mode');
+
+      const prompt = `أنت معلم كتابة إبداعية. قام الطالب بمحاولة إعادة صياغة نص لتحسينه.
+النص الأصلي: "${originalText || 'غير متوفر'}"
+النص المحسن المستهدف (النموذج): "${targetText}"
+محاولة الطالب: "${content}"
+
+المطلوب:
+1. قدم ملاحظة قصيرة ودقيقة (لا تتجاوز 40 كلمة) حول مدى اقتراب محاولة الطالب من الجودة المستهدفة.
+2. اذكر نقطة قوة واحدة ونقطة للتحسين.
+3. كن مشجعًا وإيجابيًا.
+
+الرد بصيغة JSON:
+{
+  "feedback": "الملاحظات هنا"
+}`;
+
+      const aiResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: { temperature: 0.7, maxOutputTokens: 500 },
+          }),
+        }
+      );
+
+      if (!aiResponse.ok) throw new Error('Gemini API Error');
+      const aiData = await aiResponse.json();
+      const responseText = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
+
+      let jsonStr = responseText;
+      const jsonMatch = responseText.match(/```json?\s*([\s\S]*?)\s*```/);
+      if (jsonMatch) jsonStr = jsonMatch[1];
+
+      const result = JSON.parse(jsonStr.trim());
+
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     if (!content || !writingId) throw new Error('Missing required fields');
 
     const prompt = `أنت خبير في تحليل الكتابة الإبداعية باللغة العربية. مهمتك تقييم نص إبداعي كتبه متعلم.

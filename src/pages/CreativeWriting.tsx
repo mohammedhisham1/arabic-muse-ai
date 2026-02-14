@@ -22,6 +22,14 @@ const CreativeWriting = () => {
   const [selectedWriting, setSelectedWriting] = useState<string | null>(null);
   const [writingStyle, setWritingStyle] = useState<string>('');
 
+  // Rewrite Challenge State
+  const [rewriteAttempts, setRewriteAttempts] = useState(0);
+  const [showRewrite, setShowRewrite] = useState(false);
+  const [userRewrite, setUserRewrite] = useState('');
+  const [showAIResult, setShowAIResult] = useState(false);
+  const [rewriteFeedback, setRewriteFeedback] = useState<string | null>(null);
+  const [analyzingRewrite, setAnalyzingRewrite] = useState(false);
+
   useEffect(() => {
     if (user) {
       loadWritings();
@@ -101,6 +109,12 @@ const CreativeWriting = () => {
 
       const evalResult = await response.json();
       setEvaluation(evalResult);
+      // Reset challenge state
+      setRewriteAttempts(0);
+      setShowRewrite(false);
+      setUserRewrite('');
+      setShowAIResult(false);
+
       toast.success('تم التحليل بنجاح!');
       loadWritings();
     } catch (err: any) {
@@ -117,8 +131,14 @@ const CreativeWriting = () => {
       .select('*')
       .eq('writing_id', writingId)
       .maybeSingle();
-    if (data) setEvaluation(data);
-    else setEvaluation(null);
+    if (data) {
+      setEvaluation(data);
+      // Reset challenge state for loaded evaluation
+      setRewriteAttempts(0);
+      setShowRewrite(false);
+      setUserRewrite('');
+      setShowAIResult(false);
+    } else setEvaluation(null);
   };
 
   const selectExistingWriting = (w: Writing) => {
@@ -131,6 +151,51 @@ const CreativeWriting = () => {
   const handleApplySuggestion = (suggestion: string) => {
     setContent(prev => prev + ' ' + suggestion);
     toast.success('تم إضافة الاقتراح إلى النص');
+  };
+
+  const handleRewriteSubmit = async () => {
+    if (!userRewrite.trim()) return;
+
+    setAnalyzingRewrite(true);
+    setRewriteFeedback(null);
+
+    try {
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-writing`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            mode: 'rewrite_feedback',
+            content: userRewrite,
+            targetText: evaluation?.improved_text,
+            originalText: content
+          }),
+        }
+      );
+
+      if (!response.ok) throw new Error('فشل تحليل المحاولة');
+
+      const data = await response.json();
+      setRewriteFeedback(data.feedback);
+
+      const next = rewriteAttempts + 1;
+      setRewriteAttempts(next);
+      toast.success(`تم تسجيل المحاولة ${next}`);
+
+      if (next >= 2) {
+        setShowAIResult(true);
+        toast.info('تم استلام تقييم المحاولة الأخيرة وإظهار النص المحسن');
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error('حدث خطأ أثناء تحليل المحاولة');
+    } finally {
+      setAnalyzingRewrite(false);
+    }
   };
 
   return (
@@ -185,6 +250,12 @@ const CreativeWriting = () => {
                   setContent('');
                   setSelectedWriting(null);
                   setEvaluation(null);
+                  setRewriteAttempts(0);
+                  setShowRewrite(false);
+                  setUserRewrite('');
+                  setShowAIResult(false);
+                  setRewriteFeedback(null);
+                  setAnalyzingRewrite(false);
                 }}
               >
                 كتابة جديدة
@@ -294,31 +365,107 @@ const CreativeWriting = () => {
                   </div>
                 )}
 
-                {/* Improved Text */}
+                {/* Improved Text with Challenge */}
                 {evaluation.improved_text && (
                   <div className="rounded-xl bg-primary/5 border border-primary/20 p-5">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-bold text-foreground flex items-center gap-2">
-                        <Sparkles className="h-4 w-4 text-primary" />
-                        النص المحسّن
-                      </h4>
+                    <h4 className="font-bold text-foreground flex items-center gap-2 mb-4">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                      النص المحسّن
+                    </h4>
+
+                    {!showAIResult && (
+                      <div className="space-y-4">
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          لديك فرصة لتحسين النص بنفسك بناءً على الملاحظات قبل رؤية اقتراح الذكاء الاصطناعي.
+                          <br />
+                          <span className="font-bold text-primary">المحاولات المتبقية: {2 - rewriteAttempts}</span>
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Feedback Display */}
+                    {rewriteFeedback && (
+                      <div className="rounded-lg bg-accent/10 border border-accent/20 p-4 mb-4 mt-4">
+                        <h5 className="font-bold text-sm text-accent-foreground mb-1 flex items-center gap-2">
+                          <Lightbulb className="h-4 w-4" /> ملاحظات الذكاء الاصطناعي على محاولتك:
+                        </h5>
+                        <p className="text-sm text-foreground/90">{rewriteFeedback}</p>
+                      </div>
+                    )}
+
+                    {!showRewrite && !showAIResult ? (
                       <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-xs gap-1"
-                        onClick={() => {
-                          navigator.clipboard.writeText(evaluation.improved_text || '');
-                          toast.success('تم نسخ النص المحسّن');
-                        }}
+                        onClick={() => setShowRewrite(true)}
+                        variant="outline"
+                        className="w-full border-dashed border-2"
                       >
-                        نسخ النص
+                        <PenTool className="h-4 w-4 mr-2" />
+                        محاولة إعادة كتابة النص المحسن
                       </Button>
-                    </div>
-                    <div className="rounded-lg bg-background border border-border p-4">
-                      <p className="text-sm leading-[2] text-foreground whitespace-pre-line font-medium">
-                        {evaluation.improved_text}
-                      </p>
-                    </div>
+                    ) : (
+                      <div className="space-y-3 mt-4">
+                        {/* Keep showing input but disabled if result is shown, so user can see their last attempt */}
+                        <label className="text-xs font-bold text-muted-foreground">محاولتك:</label>
+                        <textarea
+                          value={userRewrite}
+                          onChange={(e) => setUserRewrite(e.target.value)}
+                          className="w-full min-h-[120px] rounded-xl border border-input bg-background p-3 text-sm focus:border-primary focus:outline-none placeholder:text-muted-foreground/50 disabled:opacity-70 disabled:bg-muted/30"
+                          placeholder="اكتب صياغتك المحسنة هنا..."
+                          disabled={analyzingRewrite || showAIResult}
+                        />
+
+                        {!showAIResult && (
+                          <Button
+                            onClick={handleRewriteSubmit}
+                            className="w-full"
+                            variant="hero"
+                            disabled={analyzingRewrite || !userRewrite.trim()}
+                          >
+                            {analyzingRewrite ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                جاري تحليل المحاولة...
+                              </>
+                            ) : (
+                              `تسليم المحاولة (${rewriteAttempts + 1}/2)`
+                            )}
+                          </Button>
+                        )}
+                      </div>
+                    )}
+
+                    {showAIResult && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="space-y-3 mt-8 pt-6 border-t-2 border-dashed border-border"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded">
+                            اقتراح الذكاء الاصطناعي (النموذج)
+                          </span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-xs gap-1"
+                            onClick={() => {
+                              navigator.clipboard.writeText(evaluation.improved_text || '');
+                              toast.success('تم نسخ النص المحسّن');
+                            }}
+                          >
+                            نسخ النص
+                          </Button>
+                        </div>
+                        <div className="rounded-lg bg-background border border-border p-4">
+                          <p className="text-sm leading-[2] text-foreground whitespace-pre-line font-medium">
+                            {evaluation.improved_text}
+                          </p>
+                        </div>
+                        <p className="text-xs text-center text-muted-foreground mt-2">
+                          قارن بين محاولتك أعلاه وهذا الاقتراح لتعزيز تعلمك
+                        </p>
+                      </motion.div>
+                    )}
                   </div>
                 )}
               </motion.div>
