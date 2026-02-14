@@ -105,7 +105,7 @@ const ProgramComponents = () => {
                         دليل البرنامج
                     </span>
                     <h1 className="font-amiri text-4xl font-bold text-foreground sm:text-5xl leading-tight">
-                        مكونات البرنامج
+                        دليل البرنامج
                     </h1>
                     <p className="mt-4 text-xl text-primary font-medium">
                         القائم على التعلم الشخصي المعزز بالذكاء الاصطناعي
@@ -126,8 +126,8 @@ const ProgramComponents = () => {
                                     key={id}
                                     onClick={() => scrollToSection(id)}
                                     className={`w-full flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all text-right ${activeSection === id
-                                            ? 'bg-primary text-primary-foreground shadow-md'
-                                            : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                                        ? 'bg-primary text-primary-foreground shadow-md'
+                                        : 'text-muted-foreground hover:bg-muted hover:text-foreground'
                                         }`}
                                 >
                                     <Icon className="h-4 w-4 shrink-0" />

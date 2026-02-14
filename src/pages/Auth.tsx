@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PenTool, Mail, Lock, User, Eye, EyeOff, Loader2, Sparkles, ArrowRight } from 'lucide-react';
+import { PenTool, Mail, Lock, User, Eye, EyeOff, Loader2, Sparkles, ArrowRight, Phone, Globe, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,6 +18,9 @@ const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [age, setAge] = useState('');
+  const [phone, setPhone] = useState('');
+  const [country, setCountry] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [loginSuccess, setLoginSuccess] = useState(false);
@@ -74,7 +77,12 @@ const Auth = () => {
           email,
           password,
           options: {
-            data: { full_name: fullName },
+            data: {
+              full_name: fullName,
+              age: age,
+              phone_number: phone,
+              country: country
+            },
             emailRedirectTo: siteUrl,
           },
         });
@@ -245,21 +253,59 @@ const Auth = () => {
           <AnimatePresence mode="wait">
             {mode === 'register' && (
               <motion.div
-                key="fullname"
+                key="register-fields"
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: "auto" }}
                 exit={{ opacity: 0, height: 0 }}
-                className="relative overflow-hidden"
+                className="space-y-4 overflow-hidden"
               >
-                <User className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="الاسم الكامل"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="pr-10"
-                  required
-                />
+                <div className="relative">
+                  <User className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="الاسم الكامل"
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    className="pr-10"
+                    required
+                  />
+                </div>
+
+                <div className="relative">
+                  <Calendar className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="number"
+                    placeholder="السن"
+                    value={age}
+                    onChange={(e) => setAge(e.target.value)}
+                    className="pr-10"
+                    required
+                  />
+                </div>
+
+                <div className="relative">
+                  <Phone className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="tel"
+                    placeholder="رقم الهاتف"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    className="pr-10"
+                    required
+                  />
+                </div>
+
+                <div className="relative">
+                  <Globe className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="البلد"
+                    value={country}
+                    onChange={(e) => setCountry(e.target.value)}
+                    className="pr-10"
+                    required
+                  />
+                </div>
               </motion.div>
             )}
           </AnimatePresence>

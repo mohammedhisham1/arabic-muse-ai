@@ -50,7 +50,7 @@ const HeroSection = () => {
             transition={{ duration: 0.8, delay: 0.3 }}
             className="mt-6 text-lg leading-relaxed text-muted-foreground sm:text-xl"
           >
-            منصة تعليمية متقدمة تساعدك على بناء هوية لغوية فريدة وإبداعية
+            برنامج معزز بالذكاء الاصطناعي يساعدك على بناء هوية لغوية فريدة وإبداعية
             في الكتابة العربية، مصممة خصيصًا لغير الناطقين بالعربية.
           </motion.p>
 
@@ -86,7 +86,7 @@ const HeroSection = () => {
                 className="h-14 px-8 text-lg border-accent/30 text-accent-foreground hover:bg-accent/10"
                 onClick={() => navigate('/program-components')}
               >
-                مكونات البرنامج
+                دليل البرنامج
               </Button>
             </div>
           </motion.div>

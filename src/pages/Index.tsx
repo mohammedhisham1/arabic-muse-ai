@@ -135,7 +135,7 @@ const Index = () => {
         <footer className="border-t border-border bg-card py-8">
           <div className="container mx-auto px-4 text-center">
             <p className="font-amiri text-lg text-muted-foreground">
-              قلم — منصة تطوير الكتابة الإبداعية بالذكاء الاصطناعي
+              قلم —برنامج معزز بالذكاء الاصطناعي يساعدك على بناء هوية لغوية فريدة وإبداعية في الكتابة العربية، مصممة خصيصًا لغير الناطقين بالعربية.
             </p>
           </div>
         </footer>

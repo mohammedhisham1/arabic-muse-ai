@@ -30,13 +30,52 @@ const Assessment = () => {
   const [quizDone, setQuizDone] = useState(false);
   const [progressSaved, setProgressSaved] = useState(false);
   const [lessonTitle, setLessonTitle] = useState('');
+  const [previouslyCompleted, setPreviouslyCompleted] = useState(false);
+  const [retaking, setRetaking] = useState(false);
+  const [lastReachedLesson, setLastReachedLesson] = useState(0);
 
 
   useEffect(() => {
     if (user && profile) {
       fetchQuiz();
+      checkProgress();
     }
   }, [currentLessonIndex, user, profile]);
+
+  const checkProgress = async () => {
+    if (!user) return;
+    try {
+      // Check current lesson status
+      const { data: current } = await (supabase as any)
+        .from('student_lesson_progress')
+        .select('completed')
+        .eq('user_id', user.id)
+        .eq('lesson_index', currentLessonIndex)
+        .maybeSingle();
+
+      if (current?.completed) {
+        setPreviouslyCompleted(true);
+      }
+
+      // Check max progress to find "last reached lesson"
+      const { data: all } = await (supabase as any)
+        .from('student_lesson_progress')
+        .select('lesson_index')
+        .eq('user_id', user.id)
+        .eq('completed', true);
+
+      if (all && all.length > 0) {
+        const max = Math.max(...all.map((p: any) => p.lesson_index));
+        // If completed max, next is max + 1. 
+        // Bound it by TOTAL_LESSONS?
+        setLastReachedLesson(max + 1);
+      } else {
+        setLastReachedLesson(0);
+      }
+    } catch (e) {
+      console.error('Error checking progress', e);
+    }
+  };
 
   const fetchQuiz = async () => {
     try {
@@ -73,6 +112,41 @@ const Assessment = () => {
     }
   };
 
+  const TOTAL_LESSONS = 7;
+
+  const isLastLesson = currentLessonIndex >= TOTAL_LESSONS - 1;
+
+  const getNextRoute = () => {
+    if (isLastLesson) {
+      return '/creative-writing';
+    }
+    return `/lesson/${currentLessonIndex + 1}`;
+  };
+
+  const scorePercent = Math.round((score / questions.length) * 100);
+  const passed = scorePercent >= 60;
+
+  const handleRetry = () => {
+    setCurrentQ(0);
+    setSelectedAnswer(null);
+    setShowResult(false);
+    setScore(0);
+    setAnswered([]);
+    setQuizDone(false);
+    setProgressSaved(false);
+    setRetaking(true);
+  };
+
+  const handleGoBack = () => {
+    // If completed all, maybe go to creative writing? 
+    // For now, lesson index.
+    if (lastReachedLesson >= TOTAL_LESSONS) {
+      navigate('/creative-writing');
+    } else {
+      navigate(`/lesson/${lastReachedLesson}`);
+    }
+  };
+
   if (loadingProfile) return null;
   if (!profile) return <StyleTestRequired />;
 
@@ -87,6 +161,51 @@ const Assessment = () => {
   }
 
   if (questions.length === 0) return null; // Should have redirected
+
+  // Screen for previously completed assessment
+  if (previouslyCompleted && !retaking) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto px-4 py-12 flex flex-col items-center justify-center min-h-[60vh]">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="max-w-md w-full rounded-2xl border border-primary/20 bg-card p-8 text-center shadow-lg"
+          >
+            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <CheckCircle2 className="h-8 w-8" />
+            </div>
+            <h2 className="font-amiri text-2xl font-bold text-foreground mb-2">
+              لقد اجتزت هذا الاختبار مسبقاً
+            </h2>
+            <p className="text-muted-foreground mb-8 text-sm leading-relaxed">
+              يمكنك إعادة الاختبار لتحسين درجاتك، أو العودة لمتابعة رحلة التعلم من آخر درس وصلت إليه.
+            </p>
+
+            <div className="flex flex-col gap-3">
+              <Button
+                variant="hero"
+                onClick={handleGoBack}
+                className="w-full gap-2 text-lg h-12"
+              >
+                <Award className="h-5 w-5" />
+                العودة لآخر درس ({lastReachedLesson})
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleRetry}
+                className="w-full gap-2"
+              >
+                <RotateCcw className="h-4 w-4" />
+                إعادة الاختبار
+              </Button>
+            </div>
+          </motion.div>
+        </main>
+      </div>
+    );
+  }
 
   const question = questions[currentQ];
 
@@ -147,29 +266,7 @@ const Assessment = () => {
     }
   };
 
-  const TOTAL_LESSONS = 7;
 
-  const isLastLesson = currentLessonIndex >= TOTAL_LESSONS - 1;
-
-  const getNextRoute = () => {
-    if (isLastLesson) {
-      return '/creative-writing';
-    }
-    return `/lesson/${currentLessonIndex + 1}`;
-  };
-
-  const scorePercent = Math.round((score / questions.length) * 100);
-  const passed = scorePercent >= 60;
-
-  const handleRetry = () => {
-    setCurrentQ(0);
-    setSelectedAnswer(null);
-    setShowResult(false);
-    setScore(0);
-    setAnswered([]);
-    setQuizDone(false);
-    setProgressSaved(false);
-  };
 
   return (
     <div className="min-h-screen bg-background">

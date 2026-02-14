@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowRight, ArrowLeft, CheckCircle2, RefreshCw, Undo2 } from 'lucide-react';
@@ -8,11 +8,39 @@ import StatementCard from '@/components/StatementCard';
 import { useWriter } from '@/contexts/WriterContext';
 import { shuffledStatements, STATEMENTS_PER_PAGE, TOTAL_PAGES } from '@/data/questionnaire';
 import { styleData } from '@/data/styles';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 const StyleTest = () => {
   const [currentPage, setCurrentPage] = useState(0);
   const { answers, setAnswer, calculateProfile, profile, reset, loadingProfile } = useWriter();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [lastLesson, setLastLesson] = useState<number>(0);
+
+  useEffect(() => {
+    if (!user) return;
+    const fetchProgress = async () => {
+      const { data } = await (supabase as any)
+        .from('student_lesson_progress')
+        .select('lesson_index')
+        .eq('user_id', user.id)
+        .eq('completed', true);
+
+      if (data && data.length > 0) {
+        const maxIndex = Math.max(...data.map(d => d.lesson_index));
+        // Check if maxIndex is within bounds? Assuming valid.
+        // Return to the NEXT lesson (max + 1)
+        // If maxIndex is 6 (last), navigate to 6 or creative-writing?
+        // User said "last lesson reached". 
+        // If I finished 2, I reached 3.
+        setLastLesson(maxIndex + 1);
+      } else {
+        setLastLesson(0);
+      }
+    };
+    fetchProgress();
+  }, [user]);
 
   // Show retake prompt if user already has a profile
   const [showRetakePrompt, setShowRetakePrompt] = useState(true);
@@ -54,7 +82,11 @@ const StyleTest = () => {
   };
 
   const handleReturn = () => {
-    navigate(-1);
+    if (lastLesson >= 7) {
+      navigate('/creative-writing');
+    } else {
+      navigate(`/lesson/${lastLesson}`);
+    }
   };
 
   // Don't render anything while loading profile
