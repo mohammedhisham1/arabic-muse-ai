@@ -145,6 +145,36 @@ const LessonView = () => {
 
   const allObjectivesRevealed = revealedObjectives.length >= lesson.objectives.length;
 
+
+
+  const handleRegenerateLesson = () => {
+    toast.info('جاري إعادة بناء الدرس...');
+    setLesson(null);
+    generateLesson();
+  };
+
+  const handleUpdateLesson = async (partial: any) => {
+    if (!lesson) return;
+
+    const newContent = { ...lesson.content, ...partial };
+    // Update local state immediately for responsiveness
+    setLesson(prev => prev ? ({ ...prev, content: newContent }) : null);
+    toast.success('تم تحديث محتوى الدرس!');
+
+    // Persist to database
+    try {
+      const { error } = await (supabase as any)
+        .from('generated_lessons')
+        .update({ content: newContent })
+        .eq('id', lesson.id);
+
+      if (error) throw error;
+    } catch (err) {
+      console.error('Failed to save lesson update:', err);
+      toast.error('فشل حفظ التحديث في قاعدة البيانات');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -350,6 +380,8 @@ const LessonView = () => {
           lessonTitle={lesson.title}
           lessonIndex={idx}
           lessonContent={lesson.content}
+          onRegenerateLesson={handleRegenerateLesson}
+          onUpdateLesson={handleUpdateLesson}
         />
       )}
     </div>

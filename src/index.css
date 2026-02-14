@@ -2,6 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: 'APF';
+  src: url('/fonts/APF-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'APF';
+  src: url('/fonts/APF-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 @layer base {
   :root {
     --background: 35 30% 97%;
@@ -98,10 +114,10 @@
   }
 
   body {
-    @apply bg-background text-foreground font-tajawal;
+    @apply bg-background text-foreground font-apf;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-amiri;
+    @apply font-apf;
   }
 }

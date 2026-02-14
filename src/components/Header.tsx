@@ -1,7 +1,9 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { BookOpen, PenTool, LogIn, LogOut, LayoutDashboard, Award, Feather, Shield, Settings } from 'lucide-react';
+import { BookOpen, LogIn, LogOut, LayoutDashboard, Award, Feather, Shield, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/hooks/useAuth';
+import logo from '@/assets/qalam_logo_1771102518872.jpg';
+import TeacherMessages from '@/components/TeacherMessages';
 
 const Header = () => {
   const location = useLocation();
@@ -18,10 +20,11 @@ const Header = () => {
     <header className="sticky top-0 z-50 w-full border-b border-border/50 bg-background/80 backdrop-blur-md">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
         <Link to="/" className="flex items-center gap-2 group">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground transition-transform group-hover:scale-105">
-            <PenTool className="h-5 w-5" />
-          </div>
-          <span className="font-amiri text-2xl font-bold text-foreground">قلم</span>
+          <img
+            src={logo}
+            alt="Qalam"
+            className="h-16 w-auto object-contain mix-blend-multiply transition-transform group-hover:scale-105"
+          />
         </Link>
 
         <nav className="flex items-center gap-3">
@@ -51,6 +54,7 @@ const Header = () => {
                 <Award className="h-4 w-4" />
                 <span className="hidden sm:inline">إنجازاتي</span>
               </Link>
+              <TeacherMessages />
             </>
           )}
 

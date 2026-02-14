@@ -16,6 +16,7 @@ export default {
       fontFamily: {
         amiri: ["Amiri", "serif"],
         tajawal: ["Tajawal", "sans-serif"],
+        apf: ["APF", "Tajawal", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -103,5 +104,5 @@ export default {
       },
     },
   },
-  plugins: [require("tailwindcss-animate")],
+  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
 } satisfies Config;
