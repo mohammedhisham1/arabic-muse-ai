@@ -75,7 +75,7 @@ const Header = () => {
                 className="flex items-center gap-1.5 text-sm font-medium text-amber-600 transition-colors hover:text-amber-700"
               >
                 <Shield className="h-4 w-4" />
-                <span className="hidden sm:inline">إدارة المنصة</span>
+                <span className="hidden sm:inline">إدارة البرنامج</span>
               </Link>
               <Link
                 to="/teacher-dashboard"

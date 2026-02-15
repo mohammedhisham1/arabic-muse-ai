@@ -215,7 +215,7 @@ const AdminDashboard = () => {
                         لوحة تحكم المدير
                     </span>
                     <h1 className="mt-4 font-amiri text-3xl font-bold text-foreground">
-                        إدارة المنصة
+                        إدارة البرنامج
                     </h1>
                     <p className="mt-2 text-muted-foreground">
                         إدارة المعلمين والمستخدمين والإعدادات
@@ -298,8 +298,8 @@ const AdminDashboard = () => {
                     <button
                         onClick={() => setActiveTab('teachers')}
                         className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${activeTab === 'teachers'
-                                ? 'bg-primary text-primary-foreground shadow-md'
-                                : 'bg-card text-muted-foreground hover:bg-primary/10 hover:text-primary'
+                            ? 'bg-primary text-primary-foreground shadow-md'
+                            : 'bg-card text-muted-foreground hover:bg-primary/10 hover:text-primary'
                             }`}
                     >
                         <Mail className="h-4 w-4" />
@@ -308,8 +308,8 @@ const AdminDashboard = () => {
                     <button
                         onClick={() => setActiveTab('users')}
                         className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium transition-all ${activeTab === 'users'
-                                ? 'bg-primary text-primary-foreground shadow-md'
-                                : 'bg-card text-muted-foreground hover:bg-primary/10 hover:text-primary'
+                            ? 'bg-primary text-primary-foreground shadow-md'
+                            : 'bg-card text-muted-foreground hover:bg-primary/10 hover:text-primary'
                             }`}
                     >
                         <Users className="h-4 w-4" />
