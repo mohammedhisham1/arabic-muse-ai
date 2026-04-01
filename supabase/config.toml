@@ -9,5 +9,8 @@ verify_jwt = false
 [functions.lesson-chat]
 verify_jwt = false
 
+[functions.find-user-by-email]
+verify_jwt = false
+
 [functions.suggest-emotional]
 verify_jwt = false

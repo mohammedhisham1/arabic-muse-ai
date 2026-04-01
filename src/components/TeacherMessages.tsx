@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Bell, Mail, User, Clock, Info } from 'lucide-react';
+import { Bell, User, CornerUpLeft } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -8,6 +8,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { formatDistanceToNow } from 'date-fns';
 import { ar } from 'date-fns/locale';
+import { useNavigate } from 'react-router-dom';
 
 interface TeacherMessage {
     id: string;
@@ -15,11 +16,13 @@ interface TeacherMessage {
     created_at: string;
     type: 'intervention' | 'message';
     sender_name: string;
+    sender_id?: string;
     intervention_type?: string;
 }
 
 const TeacherMessages = () => {
     const { user } = useAuth();
+    const navigate = useNavigate();
     const [messages, setMessages] = useState<TeacherMessage[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [open, setOpen] = useState(false);
@@ -69,6 +72,7 @@ const TeacherMessages = () => {
                     created_at: i.created_at,
                     type: 'intervention',
                     sender_name: name,
+                    sender_id: i.teacher_id,
                     intervention_type: i.intervention_type
                 });
             });
@@ -83,15 +87,21 @@ const TeacherMessages = () => {
             .limit(10);
 
         if (directMsgs) {
-            // Assume direct messages are from teacher
-            // Ideally fetch profiles too, but for now:
+            const senderIds = [...new Set(directMsgs.map((m: any) => m.sender_id))];
+            const { data: senderProfiles } = await (supabase as any)
+                .from('profiles')
+                .select('user_id, full_name')
+                .in('user_id', senderIds);
+
             directMsgs.forEach((m: any) => {
+                const name = senderProfiles?.find((p: any) => p.user_id === m.sender_id)?.full_name || 'معلم';
                 msgs.push({
                     id: m.id,
                     content: m.content,
                     created_at: m.created_at,
                     type: 'message',
-                    sender_name: 'رسالة خاصة', // Or fetch name
+                    sender_name: name,
+                    sender_id: m.sender_id,
                 });
             });
         }
@@ -114,6 +124,12 @@ const TeacherMessages = () => {
             localStorage.setItem('teacher_messages_last_read', now);
             setUnreadCount(0);
         }
+    };
+
+    const replyTo = (senderId?: string) => {
+        if (!senderId) return;
+        setOpen(false);
+        navigate(`/student-chat?teacher=${encodeURIComponent(senderId)}`);
     };
 
     const getTypeLabel = (type: string | undefined) => {
@@ -182,7 +198,17 @@ const TeacherMessages = () => {
                                         </div>
                                     </div>
 
-                                    <div className="flex items-center justify-end gap-2 mt-1">
+                                    <div className="flex items-center justify-between gap-2 mt-1">
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                                            onClick={() => replyTo(msg.sender_id)}
+                                            disabled={!msg.sender_id}
+                                        >
+                                            <CornerUpLeft className="h-3.5 w-3.5 ml-1" />
+                                            رد
+                                        </Button>
                                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${getTypeColor(msg.intervention_type)}`}>
                                             {msg.type === 'intervention' ? getTypeLabel(msg.intervention_type) : 'رسالة خاصة'}
                                         </span>

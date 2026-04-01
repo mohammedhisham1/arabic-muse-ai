@@ -122,7 +122,7 @@ const ProgramComponents = () => {
                         دليل البرنامج
                     </h1>
                     <p className="mt-4 text-xl text-primary font-medium">
-                        القائم على التعلم الشخصي المعزز بالذكاء الاصطناعي
+                        القائم على تفريد التعلم  المعزز بالذكاء الاصطناعي
                     </p>
                 </div>
             </motion.div>

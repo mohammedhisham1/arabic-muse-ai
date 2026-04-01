@@ -5,6 +5,7 @@ import Header from '@/components/Header';
 import TeacherStudentChat from '@/components/TeacherStudentChat';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useLocation } from 'react-router-dom';
 
 interface TeacherInfo {
     teacher_id: string;
@@ -16,13 +17,21 @@ interface TeacherInfo {
 
 const StudentChat = () => {
     const { user } = useAuth();
+  const location = useLocation();
     const [teachers, setTeachers] = useState<TeacherInfo[]>([]);
     const [selectedTeacher, setSelectedTeacher] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
+    const [forcedTeacherName, setForcedTeacherName] = useState<string | null>(null);
 
     useEffect(() => {
         if (user) loadTeachers();
     }, [user]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const t = params.get('teacher');
+        if (t) setSelectedTeacher(t);
+  }, [location.search]);
 
     const loadTeachers = async () => {
         if (!user) return;
@@ -49,7 +58,26 @@ const StudentChat = () => {
 
             setTeachers(teachersWithProfiles);
             if (teachersWithProfiles.length > 0) {
-                setSelectedTeacher(teachersWithProfiles[0].teacher_id);
+                setSelectedTeacher((prev) => prev || teachersWithProfiles[0].teacher_id);
+            }
+        }
+
+        // If we landed here via a direct reply link (?teacher=...), allow chat even if not assigned
+        const params = new URLSearchParams(location.search);
+        const forcedTeacherId = params.get('teacher');
+        if (forcedTeacherId) {
+            const exists = assignments?.some((a: any) => a.teacher_id === forcedTeacherId);
+            if (!exists) {
+                const { data: profile } = await (supabase as any)
+                    .from('profiles')
+                    .select('user_id, full_name')
+                    .eq('user_id', forcedTeacherId)
+                    .maybeSingle();
+
+                setForcedTeacherName(profile?.full_name || 'المعلم');
+                setSelectedTeacher(forcedTeacherId);
+            } else {
+                setForcedTeacherName(null);
             }
         }
 
@@ -57,6 +85,10 @@ const StudentChat = () => {
     };
 
     const selectedTeacherProfile = teachers.find(t => t.teacher_id === selectedTeacher);
+    const selectedName =
+        selectedTeacherProfile?.profile?.full_name ||
+        forcedTeacherName ||
+        'المعلم';
 
     return (
         <div className="min-h-screen bg-background">
@@ -86,7 +118,7 @@ const StudentChat = () => {
                         <div className="flex justify-center py-12">
                             <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
                         </div>
-                    ) : teachers.length === 0 ? (
+                    ) : teachers.length === 0 && !selectedTeacher ? (
                         <div className="rounded-2xl border border-border bg-card p-8 text-center">
                             <MessageCircle className="mx-auto h-12 w-12 text-muted-foreground/30 mb-4" />
                             <h3 className="font-bold text-foreground mb-2">لا يوجد معلم مسجل</h3>
@@ -118,7 +150,7 @@ const StudentChat = () => {
                             {selectedTeacher && (
                                 <TeacherStudentChat
                                     otherUserId={selectedTeacher}
-                                    otherUserName={selectedTeacherProfile?.profile?.full_name || 'المعلم'}
+                                    otherUserName={selectedName}
                                 />
                             )}
                         </>

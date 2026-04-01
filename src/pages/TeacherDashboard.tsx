@@ -72,23 +72,43 @@ const TeacherDashboard = () => {
   const handleAddStudentByEmail = async () => {
     if (!studentEmail.trim()) return;
     try {
+      const email = studentEmail.trim().toLowerCase();
       // Look up user by email from profiles table
       const { data: profileData, error: profileError } = await (supabase as any)
         .from('profiles')
         .select('user_id')
-        .eq('email', studentEmail.trim().toLowerCase())
+        .ilike('email', email)
         .maybeSingle();
 
       if (profileError) throw profileError;
 
-      if (!profileData) {
+      let studentId = profileData?.user_id as string | undefined;
+
+      // Fallback: lookup in auth users via Edge Function if profiles.email isn't populated
+      if (!studentId) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const accessToken = sessionData?.session?.access_token;
+        if (!accessToken) {
+          toast.error('يرجى تسجيل الدخول مرة أخرى');
+          return;
+        }
+
+        const { data, error } = await supabase.functions.invoke('find-user-by-email', {
+          body: { email },
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (error) throw error;
+        studentId = data?.userId ?? undefined;
+      }
+
+      if (!studentId) {
         toast.error('لم يتم العثور على طالب بهذا البريد الإلكتروني');
         return;
       }
 
       const { error } = await (supabase as any)
         .from('teacher_students')
-        .insert({ teacher_id: user!.id, student_id: profileData.user_id });
+        .insert({ teacher_id: user!.id, student_id: studentId });
       if (error) {
         if (error.code === '23505') {
           toast.error('هذا الطالب مضاف بالفعل');
