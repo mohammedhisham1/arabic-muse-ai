@@ -6,6 +6,75 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+const extractJsonFromText = (text: string): string | null => {
+  if (!text) return null;
+  const raw = String(text).trim();
+
+  // Prefer fenced blocks: ```json ... ```
+  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (fenced?.[1]) {
+    const candidate = fenced[1].trim();
+    if (
+      (candidate.startsWith('{') && candidate.endsWith('}')) ||
+      (candidate.startsWith('[') && candidate.endsWith(']'))
+    ) {
+      return candidate;
+    }
+  }
+
+  // Find first balanced JSON object/array
+  const startObj = raw.indexOf('{');
+  const startArr = raw.indexOf('[');
+  const start =
+    startObj === -1 ? startArr : startArr === -1 ? startObj : Math.min(startObj, startArr);
+  if (start === -1) return null;
+
+  const openCh = raw[start];
+  const closeCh = openCh === '[' ? ']' : '}';
+
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+
+  for (let i = start; i < raw.length; i++) {
+    const ch = raw[i];
+
+    if (inString) {
+      if (escape) {
+        escape = false;
+        continue;
+      }
+      if (ch === '\\') {
+        escape = true;
+        continue;
+      }
+      if (ch === '"') inString = false;
+      continue;
+    }
+
+    if (ch === '"') {
+      inString = true;
+      continue;
+    }
+
+    if (ch === openCh) depth++;
+    if (ch === closeCh) depth--;
+
+    if (depth === 0) {
+      const candidate = raw.slice(start, i + 1).trim();
+      if (
+        (candidate.startsWith('{') && candidate.endsWith('}')) ||
+        (candidate.startsWith('[') && candidate.endsWith(']'))
+      ) {
+        return candidate;
+      }
+      return null;
+    }
+  }
+
+  return null;
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -21,6 +90,33 @@ serve(async (req) => {
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     const { title, content, style, writingId, mode, targetText, originalText } = await req.json();
+
+    const callGemini = async (prompt: string, attempt: 1 | 2, maxOutputTokens: number) => {
+      const aiResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: attempt === 1 ? 0.7 : 0.3,
+              topK: 40,
+              topP: 0.95,
+              maxOutputTokens,
+            },
+          }),
+        }
+      );
+
+      if (!aiResponse.ok) {
+        const errText = await aiResponse.text();
+        throw new Error(`Gemini API error: ${aiResponse.status} - ${errText}`);
+      }
+
+      const aiData = await aiResponse.json();
+      return aiData.candidates?.[0]?.content?.parts?.[0]?.text as string | undefined;
+    };
 
     if (mode === 'rewrite_feedback') {
       if (!content || !targetText) throw new Error('Missing content or targetText for feedback mode');
@@ -40,27 +136,36 @@ serve(async (req) => {
   "feedback": "الملاحظات هنا"
 }`;
 
-      const aiResponse = await fetch(
-        `https://generativelanguage.googleapis.com/v1/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.7, maxOutputTokens: 500 },
-          }),
-        }
-      );
+      const strict = `\n\nقواعد إخراج صارمة:\n- أعد JSON فقط بدون أي Markdown.\n- لا تستخدم \`\`\`.\n- لا تضف أي نص خارج JSON.\n`;
 
-      if (!aiResponse.ok) throw new Error('Gemini API Error');
-      const aiData = await aiResponse.json();
-      const responseText = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
+      let responseText = await callGemini(prompt + strict, 1, 500);
+      if (!responseText) throw new Error('No response from Gemini');
 
-      let jsonStr = responseText;
-      const jsonMatch = responseText.match(/```json?\s*([\s\S]*?)\s*```/);
-      if (jsonMatch) jsonStr = jsonMatch[1];
+      let jsonStr = extractJsonFromText(responseText);
+      if (!jsonStr) {
+        // retry stricter and shorter
+        responseText = await callGemini(prompt + strict + '\nأعد كائن JSON صغير فقط.', 2, 300);
+        if (!responseText) throw new Error('No response from Gemini');
+        jsonStr = extractJsonFromText(responseText);
+      }
 
-      const result = JSON.parse(jsonStr.trim());
+      if (!responseText) throw new Error('No response from Gemini');
+      if (!jsonStr) {
+        return new Response(JSON.stringify({ error: 'Invalid JSON from AI', raw: responseText.slice(0, 2000) }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+
+      let result: any;
+      try {
+        result = JSON.parse(jsonStr);
+      } catch {
+        return new Response(JSON.stringify({ error: 'Invalid JSON from AI', raw: jsonStr.slice(0, 2000) }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
 
       return new Response(JSON.stringify(result), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -93,48 +198,35 @@ ${content}
   "improved_text": "<النص كاملًا بعد تطبيق التحسينات والتصحيحات اللغوية والأسلوبية، مع الحفاظ على صوت الكاتب الأصلي>"
 }`;
 
-    const aiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.7,
-            topK: 40,
-            topP: 0.95,
-            maxOutputTokens: 2048,
-          },
-        }),
-      }
-    );
+    const strict = `\n\nقواعد إخراج صارمة:\n- أعد JSON فقط بدون أي Markdown.\n- لا تستخدم \`\`\`.\n- لا تضف أي نص خارج JSON.\n`;
 
-    if (!aiResponse.ok) {
-      const errText = await aiResponse.text();
-      console.error('Gemini API error:', aiResponse.status, errText);
-
-      if (aiResponse.status === 429) {
-        return new Response(JSON.stringify({ error: 'تم تجاوز حد الطلبات، يرجى المحاولة لاحقًا' }), {
-          status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      throw new Error(`Gemini API error: ${aiResponse.status} - ${errText}`);
-    }
-
-    const aiData = await aiResponse.json();
-    const responseText = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
-
+    let responseText = await callGemini(prompt + strict, 1, 2048);
     if (!responseText) throw new Error('No response from Gemini');
 
-    // Extract JSON from response (handle markdown code blocks)
-    let jsonStr = responseText;
-    const jsonMatch = responseText.match(/```json?\s*([\s\S]*?)\s*```/);
-    if (jsonMatch) {
-      jsonStr = jsonMatch[1];
+    let jsonStr = extractJsonFromText(responseText);
+    if (!jsonStr) {
+      // Retry with a compact instruction to avoid truncation/formatting
+      responseText = await callGemini(prompt + strict + '\nأعد نفس الكائن لكن بإيجاز.', 2, 1200);
+      if (!responseText) throw new Error('No response from Gemini');
+      jsonStr = extractJsonFromText(responseText);
     }
 
-    const evaluation = JSON.parse(jsonStr.trim());
+    if (!jsonStr) {
+      return new Response(JSON.stringify({ error: 'Invalid JSON from AI', raw: responseText.slice(0, 2000) }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    let evaluation: any;
+    try {
+      evaluation = JSON.parse(jsonStr);
+    } catch {
+      return new Response(JSON.stringify({ error: 'Invalid JSON from AI', raw: jsonStr.slice(0, 2000) }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
 
     const { data: evalData, error: evalError } = await supabaseAdmin
       .from('writing_evaluations')
