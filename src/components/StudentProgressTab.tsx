@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { BookOpen, CheckCircle2, Circle, Clock, TrendingUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { styleData } from '@/data/styles';
+import { LESSON_TOPICS } from '@/data/lessonTopics';
 import type { StudentLessonProgress } from '@/types/database';
 
 interface StudentProgressTabProps {
@@ -35,12 +35,8 @@ const StudentProgressTab = ({ studentId, writingStyle }: StudentProgressTabProps
         setLoading(false);
     };
 
-    // Get lessons from style data
-    const style = writingStyle && styleData[writingStyle as keyof typeof styleData];
-    const lessons = style?.lessons || [];
-
     const completedCount = progress.filter(p => p.completed).length;
-    const totalLessons = lessons.length || progress.length || 0;
+    const totalLessons = LESSON_TOPICS.length;
     const progressPercent = totalLessons > 0 ? (completedCount / totalLessons) * 100 : 0;
 
     return (
@@ -95,7 +91,7 @@ const StudentProgressTab = ({ studentId, writingStyle }: StudentProgressTabProps
                     </div>
                 ) : (
                     <div className="space-y-3">
-                        {(lessons.length > 0 ? lessons : Array.from({ length: totalLessons })).map((lesson: any, idx: number) => {
+                        {LESSON_TOPICS.map((lesson, idx: number) => {
                             const lessonProgress = progress.find(p => p.lesson_index === idx);
                             const isCompleted = lessonProgress?.completed;
                             const score = lessonProgress?.score;
@@ -127,7 +123,7 @@ const StudentProgressTab = ({ studentId, writingStyle }: StudentProgressTabProps
 
                                     <div className="flex-1 min-w-0">
                                         <p className="font-bold text-foreground">
-                                            الدرس {idx + 1}{lesson?.title ? `: ${lesson.title}` : ''}
+                                            الدرس {idx + 1}: {lesson.title}
                                         </p>
                                         {completedAt && (
                                             <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">

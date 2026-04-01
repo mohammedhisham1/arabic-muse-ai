@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import heroImg from '@/assets/hero-writing-education.jpg';
+import heroImg from '@/assets/hero-calligraphy.jpg';
 
 const HeroSection = () => {
   const navigate = useNavigate();
@@ -74,7 +74,7 @@ const HeroSection = () => {
                 variant="outline"
                 size="lg"
                 className="h-14 px-8 text-lg"
-                onClick={() => navigate('/program-components#stages')}
+                onClick={() => navigate('/program-stages')}
               >
                 مراحل برنامج
               </Button>
