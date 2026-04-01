@@ -16,6 +16,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { LESSON_TOPICS } from '@/data/lessonTopics';
+import { styleData } from '@/data/styles';
 
 interface GeneratedLesson {
   id: string;
@@ -128,6 +129,7 @@ const LessonView = () => {
   if (!profile) return <StyleTestRequired />;
 
   if (loading || generating) {
+    const styleName = styleData[profile.style]?.name ?? profile.style;
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center">
         <Header />
@@ -137,7 +139,7 @@ const LessonView = () => {
             {generating ? 'جاري تأليف الدرس خصيصًا لك...' : 'جاري تحميل الدرس...'}
           </h2>
           <p className="text-muted-foreground">
-            يقوم الذكاء الاصطناعي بإعداد محتوى يناسب أسلوبك "{profile.style}"
+            يقوم الذكاء الاصطناعي بإعداد محتوى يناسب أسلوبك "{styleName}"
           </p>
         </div>
       </div>
