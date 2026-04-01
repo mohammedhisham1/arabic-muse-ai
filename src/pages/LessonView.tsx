@@ -30,6 +30,24 @@ interface GeneratedLesson {
   quiz: any[];
 }
 
+const splitIntoParagraphs = (text: string): string[] => {
+  const normalized = text.replace(/\r\n/g, '\n').trim();
+  if (!normalized) return [];
+
+  // Prefer true paragraphs separated by blank lines
+  const byBlankLines = normalized.split(/\n\s*\n/).map(s => s.trim()).filter(Boolean);
+  if (byBlankLines.length > 1) return byBlankLines;
+
+  // Fallback: split by single newlines / bullet-like lines
+  const lines = normalized
+    .split('\n')
+    .map(s => s.trim())
+    .filter(Boolean)
+    .map(s => s.replace(/^[-•\u2022]\s+/, ''));
+
+  return lines.length > 1 ? lines : [normalized];
+};
+
 const LessonView = () => {
   const { profile, loadingProfile } = useWriter();
   const { user } = useAuth();
@@ -348,7 +366,7 @@ const LessonView = () => {
 
                   <div className="space-y-6">
                     {typeof lesson.content?.explanation === 'string' ? (
-                      lesson.content.explanation.split(/\n\s*\n/).filter((p: string) => p.trim()).map((part: string, index: number) => {
+                      splitIntoParagraphs(lesson.content.explanation).map((part: string, index: number) => {
                         const styles = [
                           'bg-primary/5 border-primary/20 hover:bg-primary/10',
                           'bg-blue-500/5 border-blue-500/20 hover:bg-blue-500/10',

@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import heroImg from '@/assets/hero-calligraphy.jpg';
+import heroImg from '@/assets/hero-writing-education.jpg';
 
 const HeroSection = () => {
   const navigate = useNavigate();
@@ -13,11 +13,12 @@ const HeroSection = () => {
       <div className="absolute inset-0">
         <img
           src={heroImg}
-          alt="فن الخط العربي"
+          alt="خلفية تعليم الكتابة الإبداعية"
           className="h-full w-full object-cover"
           loading="eager"
         />
-        <div className="absolute inset-0 bg-gradient-to-l from-background/95 via-background/80 to-background/60" />
+        {/* Extra overlay for text contrast (kept subtle so background remains visible) */}
+        <div className="absolute inset-0 bg-gradient-to-l from-background/90 via-background/55 to-background/20" />
       </div>
 
       {/* Content */}
@@ -40,8 +41,7 @@ const HeroSection = () => {
             transition={{ duration: 0.8, delay: 0.15 }}
             className="mt-6 font-amiri text-4xl font-bold leading-tight text-foreground sm:text-5xl lg:text-6xl"
           >
-            اكتشف أسلوبك الإبداعي
-            <span className="block text-primary">في الكتابة العربية</span>
+            تنمية الكتابة الابداعية لغير الناطقين بالعربية
           </motion.h1>
 
           <motion.p
@@ -76,7 +76,7 @@ const HeroSection = () => {
                 className="h-14 px-8 text-lg"
                 onClick={() => navigate('/program-components#stages')}
               >
-                تعرّف على البرنامج
+                مراحل برنامج
               </Button>
               <Button
                 variant="outline"
