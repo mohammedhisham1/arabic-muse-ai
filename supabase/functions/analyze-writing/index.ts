@@ -75,6 +75,39 @@ const extractJsonFromText = (text: string): string | null => {
   return null;
 };
 
+const buildFallbackEvaluation = (args: { title?: string; content: string; style?: string }) => {
+  const text = (args.content || '').trim();
+  const wordCount = text ? text.split(/\s+/).filter(Boolean).length : 0;
+
+  // Conservative heuristic scores for very short / low-signal texts
+  const isTooShort = wordCount < 25;
+
+  const word_precision = isTooShort ? 4 : 6;
+  const feeling_depth = isTooShort ? 3 : 5;
+  const linguistic_identity = isTooShort ? 2 : 5;
+
+  const feedback = isTooShort
+    ? 'النص قصير جدًا ولا يوفّر مادة كافية لتحليلٍ دقيق. حاول كتابة فقرة أطول (4–6 جمل) تتضمن حدثًا/مشهدًا ومشاعر واضحة.'
+    : 'يوجد أساس جيد، لكن التحليل الآلي لم يتمكن من إنتاج تقرير كامل هذه المرة. جرّب تحسين النص قليلًا ثم أعد التحليل.';
+
+  const suggestions = isTooShort
+    ? 'اكتب مشهدًا صغيرًا: حدّد المكان، شخصية واحدة، هدفًا واضحًا، وجملة أو جملتين تعبّران عن الشعور. ثم أضف تفصيلة حسية (صوت/رائحة/لون).'
+    : 'قسّم النص إلى فقرات، وركّز على أفعال دقيقة بدل العموميات، وأضف تفاصيل حسية قليلة ولكن مؤثرة.';
+
+  const improved_text = isTooShort
+    ? 'في مساءٍ هادئ، جلستُ قرب النافذة أراقب الضوء وهو ينسحب ببطء من فوق الجدار. لم يكن السؤال في رأسي مجرد كلمات، بل ارتجافة صغيرة في القلب: ماذا لو تأخرتُ خطوة واحدة؟'
+    : null;
+
+  return {
+    word_precision,
+    feeling_depth,
+    linguistic_identity,
+    feedback,
+    suggestions,
+    improved_text,
+  };
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -211,21 +244,18 @@ ${content}
       jsonStr = extractJsonFromText(responseText);
     }
 
-    if (!jsonStr) {
-      return new Response(JSON.stringify({ error: 'Invalid JSON from AI', raw: responseText.slice(0, 2000) }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    let evaluation: any = null;
+    if (jsonStr) {
+      try {
+        evaluation = JSON.parse(jsonStr);
+      } catch {
+        evaluation = null;
+      }
     }
 
-    let evaluation: any;
-    try {
-      evaluation = JSON.parse(jsonStr);
-    } catch {
-      return new Response(JSON.stringify({ error: 'Invalid JSON from AI', raw: jsonStr.slice(0, 2000) }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+    // If the model output was truncated/non-JSON, fall back to a safe heuristic evaluation
+    if (!evaluation) {
+      evaluation = buildFallbackEvaluation({ title, content, style });
     }
 
     const { data: evalData, error: evalError } = await supabaseAdmin
