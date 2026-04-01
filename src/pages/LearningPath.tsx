@@ -10,43 +10,13 @@ import { useWriter } from '@/contexts/WriterContext';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { styleData } from '@/data/styles';
+import { LESSON_TOPICS } from '@/data/lessonTopics';
 
 interface LessonProgress {
   lesson_index: number;
   completed: boolean;
   score: number | null;
 }
-
-const LESSON_TOPICS = [
-  {
-    title: "مفهوم السرد الإبداعي",
-    desc: "ما هو السرد الإبداعي، لماذا نحكي القصص، وعناصر القصة الأساسية.",
-  },
-  {
-    title: "بناء الشخصيات",
-    desc: "الدوافع النفسية، التطور عبر الأحداث، وخلق شخصيات ثلاثية الأبعاد.",
-  },
-  {
-    title: "الحبكة والصراع",
-    desc: "أنواع الصراع (داخلي/خارجي)، منحنيات السرد، ونقطة الذروة.",
-  },
-  {
-    title: "المكان والزمان",
-    desc: "كيف يؤثر الإطار السردي على الشخصيات والمشاعر.",
-  },
-  {
-    title: "الحوار والسرد",
-    desc: "كتابة حوار واقعي، الموازنة بين السرد والحوار، والأصوات المتعددة.",
-  },
-  {
-    title: "الخيال والتصوير",
-    desc: "استخدام اللغة المجازية، الاستعارة، وبناء الصور الذهنية.",
-  },
-  {
-    title: "نهاية القصة",
-    desc: "كيفية كتابة نهاية مؤثرة وتجنب الكليشيهات.",
-  }
-];
 
 const LearningPath = () => {
   const { profile, reset, loadingProfile } = useWriter();

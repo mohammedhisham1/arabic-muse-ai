@@ -15,6 +15,7 @@ import { useWriter } from '@/contexts/WriterContext';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { LESSON_TOPICS } from '@/data/lessonTopics';
 
 interface GeneratedLesson {
   id: string;
@@ -145,6 +146,23 @@ const LessonView = () => {
 
   const allObjectivesRevealed = revealedObjectives.length >= lesson.objectives.length;
 
+  const totalLessons = LESSON_TOPICS.length;
+  const hasPrevLesson = idx > 0;
+  const hasNextLesson = idx < totalLessons - 1;
+
+  const goToPrevLesson = () => {
+    if (!hasPrevLesson) return;
+    navigate(`/lesson/${idx - 1}`);
+  };
+
+  const goToNextLesson = () => {
+    if (!hasNextLesson) {
+      toast.info('أنت في آخر درس.');
+      return;
+    }
+    navigate(`/lesson/${idx + 1}`);
+  };
+
 
 
   const handleRegenerateLesson = () => {
@@ -197,6 +215,37 @@ const LessonView = () => {
             <p className="mt-2 text-muted-foreground">
               تم إعداد هذا الدرس خصيصًا لأسلوبك
             </p>
+
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={goToPrevLesson}
+                disabled={!hasPrevLesson}
+                className="h-9 px-3 text-muted-foreground hover:text-foreground opacity-70 hover:opacity-100"
+              >
+                <ArrowRight className="h-4 w-4 ml-1" />
+                الدرس السابق
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate('/learning-path')}
+                className="h-9 px-3 text-muted-foreground hover:text-foreground opacity-70 hover:opacity-100"
+              >
+                عرض كل الدروس
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={goToNextLesson}
+                disabled={!hasNextLesson}
+                className="h-9 px-3 text-muted-foreground hover:text-foreground opacity-60 hover:opacity-100"
+              >
+                تخطي للدرس التالي
+                <ArrowLeft className="h-4 w-4 mr-1" />
+              </Button>
+            </div>
           </div>
 
           {/* Step Indicators */}
@@ -354,9 +403,19 @@ const LessonView = () => {
 
                 <div className="flex justify-between mt-8">
                   <Button variant="ghost" onClick={() => setCurrentStep(0)}>السابق</Button>
-                  <Button variant="hero" onClick={() => setCurrentStep(2)} className="gap-2">
-                    التالي: الخلاصة <ArrowLeft className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      onClick={goToNextLesson}
+                      disabled={!hasNextLesson}
+                      className="text-muted-foreground hover:text-foreground opacity-60 hover:opacity-100"
+                    >
+                      تخطي الدرس
+                    </Button>
+                    <Button variant="hero" onClick={() => setCurrentStep(2)} className="gap-2">
+                      التالي: الخلاصة <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -392,7 +451,17 @@ const LessonView = () => {
                   </Button>
                 </div>
                 <div className="flex justify-center">
-                  <Button variant="ghost" onClick={() => setCurrentStep(1)}>عودة للشرح</Button>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    <Button variant="ghost" onClick={() => setCurrentStep(1)}>عودة للشرح</Button>
+                    <Button
+                      variant="ghost"
+                      onClick={goToNextLesson}
+                      disabled={!hasNextLesson}
+                      className="text-muted-foreground hover:text-foreground opacity-60 hover:opacity-100"
+                    >
+                      تخطي إلى الدرس التالي
+                    </Button>
+                  </div>
                 </div>
               </motion.div>
             )}

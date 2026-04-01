@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import {
     Sparkles, PenTool, BookOpen, Target, Award,
     MessageCircle, BarChart3, Users,
@@ -54,6 +54,7 @@ const BulletItem = ({ children, icon: Icon = CheckCircle2 }: { children: React.R
 /* ─── Main Component ─── */
 const ProgramComponents = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [activeSection, setActiveSection] = useState(NAV_ITEMS[0].id);
     const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
 
@@ -81,6 +82,19 @@ const ProgramComponents = () => {
 
         return () => observer.disconnect();
     }, []);
+
+    // Support deep-linking to a section via URL hash (e.g. /program-components#stages)
+    useEffect(() => {
+        const hash = location.hash?.replace('#', '').trim();
+        if (!hash) return;
+
+        const el = document.getElementById(hash);
+        if (!el) return;
+
+        requestAnimationFrame(() => {
+            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    }, [location.hash]);
 
     const scrollToSection = (id: string) => {
         const el = document.getElementById(id);

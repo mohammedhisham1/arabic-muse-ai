@@ -74,9 +74,7 @@ const HeroSection = () => {
                 variant="outline"
                 size="lg"
                 className="h-14 px-8 text-lg"
-                onClick={() => {
-                  document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' });
-                }}
+                onClick={() => navigate('/program-components#stages')}
               >
                 تعرّف على البرنامج
               </Button>
