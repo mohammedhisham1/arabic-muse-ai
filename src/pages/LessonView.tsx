@@ -99,7 +99,11 @@ const LessonView = () => {
   };
 
   const generateLesson = async () => {
-    if (!user || !profile) return;
+    if (!user || !profile) {
+      toast.info('سجّل دخولك أولًا لبدء الدروس.');
+      navigate('/auth');
+      return;
+    }
     setGenerating(true);
     try {
       const { data, error } = await supabase.functions.invoke('generate-lesson', {
@@ -127,6 +131,37 @@ const LessonView = () => {
 
   if (loadingProfile) return null;
   if (!profile) return <StyleTestRequired />;
+
+  // Without auth, we can't fetch/generate lessons from Supabase.
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto px-4 py-24">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mx-auto max-w-md text-center space-y-6"
+          >
+            <h2 className="font-amiri text-3xl font-bold text-foreground">
+              سجّل دخولك للمتابعة
+            </h2>
+            <p className="text-muted-foreground leading-relaxed">
+              لإظهار الدروس وتوليدها خصيصًا لأسلوبك، تحتاج إلى تسجيل الدخول أولًا.
+            </p>
+            <div className="flex flex-wrap justify-center gap-3">
+              <Button variant="hero" size="lg" onClick={() => navigate('/auth')}>
+                تسجيل الدخول
+              </Button>
+              <Button variant="outline" size="lg" onClick={() => navigate('/learning-path')}>
+                العودة لمسار التعلم
+              </Button>
+            </div>
+          </motion.div>
+        </main>
+      </div>
+    );
+  }
 
   if (loading || generating) {
     const styleName = styleData[profile.style]?.name ?? profile.style;
