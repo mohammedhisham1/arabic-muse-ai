@@ -3,5 +3,11 @@ project_id = "vccawaxnskbmjsjzohlu"
 [functions.analyze-writing]
 verify_jwt = false
 
+[functions.generate-lesson]
+verify_jwt = false
+
+[functions.lesson-chat]
+verify_jwt = false
+
 [functions.suggest-emotional]
 verify_jwt = false
