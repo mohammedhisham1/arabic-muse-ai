@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type MouseEvent } from 'react';
 import { motion } from 'framer-motion';
-import { PenTool, Send, Sparkles, Target, Heart, Fingerprint, Lightbulb, Loader2 } from 'lucide-react';
+import { PenTool, Send, Sparkles, Target, Heart, Fingerprint, Lightbulb, Loader2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import Header from '@/components/Header';
@@ -123,6 +123,7 @@ const CreativeWriting = () => {
   const [showAIResult, setShowAIResult] = useState(false);
   const [rewriteFeedback, setRewriteFeedback] = useState<string | null>(null);
   const [analyzingRewrite, setAnalyzingRewrite] = useState(false);
+  const [deletingWritingId, setDeletingWritingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -240,6 +241,40 @@ const CreativeWriting = () => {
     setContent(w.content);
     setSelectedWriting(w.id);
     loadEvaluation(w.id);
+  };
+
+  const clearEditorState = () => {
+    setTitle('');
+    setContent('');
+    setSelectedWriting(null);
+    setEvaluation(null);
+    setRewriteAttempts(0);
+    setShowRewrite(false);
+    setUserRewrite('');
+    setShowAIResult(false);
+    setRewriteFeedback(null);
+    setAnalyzingRewrite(false);
+  };
+
+  const handleDeleteWriting = async (w: Writing, e: MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const label = (w.title || 'هذه الكتابة').slice(0, 80);
+    if (!window.confirm(`حذف «${label}» نهائياً؟ سيزال التقييم المرتبط أيضاً.`)) return;
+
+    setDeletingWritingId(w.id);
+    try {
+      const { error } = await supabase.from('writings').delete().eq('id', w.id);
+      if (error) throw error;
+      toast.success('تم حذف الكتابة');
+      setWritings(prev => prev.filter(x => x.id !== w.id));
+      if (selectedWriting === w.id) clearEditorState();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'تعذّر حذف الكتابة';
+      toast.error(msg);
+    } finally {
+      setDeletingWritingId(null);
+    }
   };
 
   const handleRewriteSubmit = async () => {
@@ -393,37 +428,47 @@ const CreativeWriting = () => {
                   <p className="text-sm text-muted-foreground">لم تكتب شيئًا بعد. ابدأ الآن!</p>
                 )}
                 {writings.map(w => (
-                  <button
+                  <div
                     key={w.id}
-                    onClick={() => selectExistingWriting(w)}
-                    className={`w-full rounded-lg border p-3 text-right transition-all ${selectedWriting === w.id
+                    className={`flex items-stretch gap-1 rounded-lg border transition-all ${selectedWriting === w.id
                       ? 'border-primary bg-primary/5'
                       : 'border-border bg-background hover:border-primary/30'
                       }`}
                   >
-                    <p className="text-sm font-bold text-foreground truncate">{w.title}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {new Date(w.created_at).toLocaleDateString('ar')}
-                    </p>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => selectExistingWriting(w)}
+                      className="min-w-0 flex-1 p-3 text-right"
+                    >
+                      <p className="text-sm font-bold text-foreground truncate">{w.title}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {new Date(w.created_at).toLocaleDateString('ar')}
+                      </p>
+                    </button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-auto shrink-0 rounded-l-none rounded-r-lg text-muted-foreground hover:text-destructive"
+                      disabled={deletingWritingId === w.id}
+                      onClick={e => handleDeleteWriting(w, e)}
+                      title="حذف الكتابة"
+                      aria-label="حذف الكتابة"
+                    >
+                      {deletingWritingId === w.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
                 ))}
               </div>
 
               <Button
                 variant="outline"
                 className="mt-4 w-full"
-                onClick={() => {
-                  setTitle('');
-                  setContent('');
-                  setSelectedWriting(null);
-                  setEvaluation(null);
-                  setRewriteAttempts(0);
-                  setShowRewrite(false);
-                  setUserRewrite('');
-                  setShowAIResult(false);
-                  setRewriteFeedback(null);
-                  setAnalyzingRewrite(false);
-                }}
+                onClick={() => clearEditorState()}
               >
                 كتابة جديدة
               </Button>
