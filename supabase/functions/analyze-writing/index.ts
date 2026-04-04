@@ -6,6 +6,52 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+/** Gemini sometimes emits “curly” quotes; JSON.parse requires ASCII ". */
+const normalizeAiQuotes = (s: string) =>
+  s
+    .replace(/\u201C/g, '"')
+    .replace(/\u201D/g, '"')
+    .replace(/\u201E/g, '"')
+    .replace(/\u2033/g, '"');
+
+const unescapeJsonStringChunk = (inner: string): string =>
+  inner
+    .replace(/\\n/g, '\n')
+    .replace(/\\r/g, '\r')
+    .replace(/\\t/g, '\t')
+    .replace(/\\"/g, '"')
+    .replace(/\\\\/g, '\\');
+
+/** Flatten feedback when the model returns a string, object, or array (not per contract). */
+const feedbackValueToString = (fb: unknown): string => {
+  if (typeof fb === 'string') return fb.trim();
+  if (fb == null) return '';
+  if (Array.isArray(fb)) {
+    return fb.map(feedbackValueToString).filter(Boolean).join(' ');
+  }
+  if (typeof fb === 'object') {
+    const parts: string[] = [];
+    for (const v of Object.values(fb as Record<string, unknown>)) {
+      const s = feedbackValueToString(v);
+      if (s) parts.push(s);
+    }
+    return parts.join(' ');
+  }
+  return String(fb).trim();
+};
+
+/** Pull "key": "value" string values from a fragment (e.g. inside feedback:{...}). */
+const collectStringValuesFromJsonishFragment = (fragment: string): string => {
+  const values: string[] = [];
+  const re = /"[^"]*"\s*:\s*"((?:\\.|[^"\\])*)"/g;
+  let m;
+  while ((m = re.exec(fragment)) !== null) {
+    const inner = unescapeJsonStringChunk(m[1]);
+    if (inner.trim()) values.push(inner.trim());
+  }
+  return values.join(' ');
+};
+
 const extractJsonFromText = (text: string): string | null => {
   if (!text) return null;
   const raw = String(text).trim();
@@ -108,6 +154,51 @@ const buildFallbackEvaluation = (args: { title?: string; content: string; style?
   };
 };
 
+/** When JSON is truncated or uses smart quotes, recover feedback (string or object shape). */
+const extractFeedbackFromBrokenJson = (s: string): string | null => {
+  const norm = normalizeAiQuotes(s);
+
+  const strOpen = norm.match(/"feedback"\s*:\s*"/);
+  if (strOpen && strOpen.index !== undefined) {
+    let i = strOpen.index + strOpen[0].length;
+    let out = '';
+    let escape = false;
+    for (; i < norm.length; i++) {
+      const ch = norm[i];
+      if (escape) {
+        if (ch === 'n') out += '\n';
+        else if (ch === 't') out += '\t';
+        else if (ch === 'r') out += '\r';
+        else out += ch;
+        escape = false;
+        continue;
+      }
+      if (ch === '\\') {
+        escape = true;
+        continue;
+      }
+      if (ch === '"') break;
+      out += ch;
+    }
+    const t = out.trim();
+    if (t.length > 0) return t;
+  }
+
+  const objOpen = norm.match(/"feedback"\s*:\s*\{/);
+  if (objOpen && objOpen.index !== undefined) {
+    const frag = norm.slice(objOpen.index + objOpen[0].length);
+    const joined = collectStringValuesFromJsonishFragment(frag);
+    if (joined.trim()) return joined.trim();
+  }
+
+  return null;
+};
+
+const buildFallbackRewriteFeedback = () => ({
+  feedback:
+    'لم يكتمل الرد التلقائي. قارن صياغتك بالنموذج المستهدف، وركّز على دقة المفردات وتسلسل الأفكار، ثم أعد المحاولة.',
+});
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -124,7 +215,13 @@ serve(async (req) => {
 
     const { title, content, style, writingId, mode, targetText, originalText } = await req.json();
 
-    const callGemini = async (prompt: string, attempt: 1 | 2, maxOutputTokens: number) => {
+    type GeminiCallResult = { text: string | undefined; finishReason?: string };
+
+    const callGemini = async (
+      prompt: string,
+      attempt: 1 | 2,
+      maxOutputTokens: number
+    ): Promise<GeminiCallResult> => {
       const aiResponse = await fetch(
         `https://generativelanguage.googleapis.com/v1/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
         {
@@ -148,7 +245,11 @@ serve(async (req) => {
       }
 
       const aiData = await aiResponse.json();
-      return aiData.candidates?.[0]?.content?.parts?.[0]?.text as string | undefined;
+      const cand = aiData.candidates?.[0];
+      return {
+        text: cand?.content?.parts?.[0]?.text as string | undefined,
+        finishReason: cand?.finishReason as string | undefined,
+      };
     };
 
     if (mode === 'rewrite_feedback') {
@@ -164,43 +265,89 @@ serve(async (req) => {
 2. اذكر نقطة قوة واحدة ونقطة للتحسين.
 3. كن مشجعًا وإيجابيًا.
 
-الرد بصيغة JSON:
+الرد بصيغة JSON (حقل feedback نص واحد فقط وليس كائناً ولا قائمة):
 {
-  "feedback": "الملاحظات هنا"
+  "feedback": "الملاحظات هنا في فقرة واحدة"
 }`;
 
-      const strict = `\n\nقواعد إخراج صارمة:\n- أعد JSON فقط بدون أي Markdown.\n- لا تستخدم \`\`\`.\n- لا تضف أي نص خارج JSON.\n`;
+      const strict = `\n\nقواعد إخراج صارمة:\n- أعد JSON فقط بدون أي Markdown.\n- لا تستخدم \`\`\`.\n- لا تضف أي نص خارج JSON.\n- feedback يجب أن يكون string عربي واحد فقط؛ ممنوع وضع feedback ككائن أو مفاتيح مثل overall_ أو summary.\n- أنهِ feedback جملة كاملة بنقطة أو علامة استفهام؛ لا تترك جملة غير مكتملة.\n`;
 
-      let responseText = await callGemini(prompt + strict, 1, 500);
+      const fallback = buildFallbackRewriteFeedback();
+
+      const resolveFeedbackJson = (raw: string | null): { feedback: string; ok: boolean } => {
+        if (!raw) return { ...fallback, ok: false };
+        const normalized = normalizeAiQuotes(raw);
+        try {
+          const o = JSON.parse(normalized);
+          const fb = feedbackValueToString(o?.feedback);
+          if (fb) return { feedback: fb, ok: true };
+        } catch {
+          /* parse failed */
+        }
+        const partial = extractFeedbackFromBrokenJson(normalized);
+        // Partial = model/API truncation — not acceptable as final; caller will retry or fallback
+        if (partial) return { feedback: partial, ok: false };
+        return { ...fallback, ok: false };
+      };
+
+      /** Only ok when JSON.parse succeeds; scraped text alone is never final. */
+      const resolveFromModelText = (full: string, extracted: string | null): { feedback: string; ok: boolean } => {
+        const fromExtracted = resolveFeedbackJson(extracted);
+        if (fromExtracted.ok) return fromExtracted;
+        const fromFull = extractFeedbackFromBrokenJson(normalizeAiQuotes(full));
+        if (fromFull) return { feedback: fromFull, ok: false };
+        return fromExtracted;
+      };
+
+      let lastFinish: string | undefined;
+      let g1 = await callGemini(prompt + strict, 1, 2048);
+      lastFinish = g1.finishReason;
+      let responseText = g1.text ?? '';
       if (!responseText) throw new Error('No response from Gemini');
+      responseText = normalizeAiQuotes(responseText);
 
       let jsonStr = extractJsonFromText(responseText);
-      if (!jsonStr) {
-        // retry stricter and shorter
-        responseText = await callGemini(prompt + strict + '\nأعد كائن JSON صغير فقط.', 2, 300);
+      if (!jsonStr || lastFinish === 'MAX_TOKENS') {
+        const g2 = await callGemini(prompt + strict + '\nأعد كائن JSON صغير فقط.', 2, 1024);
+        lastFinish = g2.finishReason;
+        responseText = normalizeAiQuotes(g2.text ?? '');
         if (!responseText) throw new Error('No response from Gemini');
         jsonStr = extractJsonFromText(responseText);
       }
 
-      if (!responseText) throw new Error('No response from Gemini');
-      if (!jsonStr) {
-        return new Response(JSON.stringify({ error: 'Invalid JSON from AI', raw: responseText.slice(0, 2000) }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+      let { feedback, ok } = resolveFromModelText(responseText, jsonStr);
+
+      if (!ok || lastFinish === 'MAX_TOKENS') {
+        const tinyPrompt = `أجب بسطر واحد JSON فقط بدون Markdown. feedback نص واحد فقط (ليس كائناً): {"feedback":"ملاحظة قصيرة"}
+حد أقصى 25 كلمة داخل feedback. أنهِ الجملة بنقطة. لا تقطع النص.
+الأصل: ${(originalText || '').slice(0, 120)}
+المستهدف: ${targetText.slice(0, 120)}
+محاولة الطالب: ${content.slice(0, 280)}`;
+        const g3 = await callGemini(tinyPrompt + strict, 2, 1024);
+        lastFinish = g3.finishReason;
+        const r3 = normalizeAiQuotes(g3.text ?? '');
+        const j3 = r3 ? extractJsonFromText(r3) : null;
+        const third = r3 ? resolveFromModelText(r3, j3) : { ...fallback, ok: false };
+        if (third.ok) {
+          feedback = third.feedback;
+          ok = true;
+        }
       }
 
-      let result: any;
-      try {
-        result = JSON.parse(jsonStr);
-      } catch {
-        return new Response(JSON.stringify({ error: 'Invalid JSON from AI', raw: jsonStr.slice(0, 2000) }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+      if (!ok) {
+        feedback = fallback.feedback;
       }
 
-      return new Response(JSON.stringify(result), {
+      console.log(
+        JSON.stringify({
+          debugSession: 'a04600',
+          branch: 'rewrite_feedback',
+          event: 'ok',
+          feedbackLen: feedback.length,
+        })
+      );
+
+      return new Response(JSON.stringify({ feedback }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -212,7 +359,7 @@ serve(async (req) => {
 قيّم النص التالي من حيث:
 1. دقة الكلمات (word_precision): صحة استخدام المفردات والتراكيب (0-10)
 2. عمق المشاعر (feeling_depth): القدرة على التعبير عن المشاعر والأحاسيس (0-10)
-3. الهوية اللغوية (linguistic_identity): تميز الأسلوب وتطور صوت الكاتب (0-10)
+3. الذات اللغوية (linguistic_identity): تميز الأسلوب وتطور صوت الكاتب (0-10)
 
 أسلوب الكاتب: ${style || 'غير محدد'}
 
@@ -233,13 +380,14 @@ ${content}
 
     const strict = `\n\nقواعد إخراج صارمة:\n- أعد JSON فقط بدون أي Markdown.\n- لا تستخدم \`\`\`.\n- لا تضف أي نص خارج JSON.\n`;
 
-    let responseText = await callGemini(prompt + strict, 1, 2048);
+    let gEval = await callGemini(prompt + strict, 1, 2048);
+    let responseText = gEval.text;
     if (!responseText) throw new Error('No response from Gemini');
 
     let jsonStr = extractJsonFromText(responseText);
-    if (!jsonStr) {
-      // Retry with a compact instruction to avoid truncation/formatting
-      responseText = await callGemini(prompt + strict + '\nأعد نفس الكائن لكن بإيجاز.', 2, 1200);
+    if (!jsonStr || gEval.finishReason === 'MAX_TOKENS') {
+      const gEval2 = await callGemini(prompt + strict + '\nأعد نفس الكائن لكن بإيجاز.', 2, 1200);
+      responseText = gEval2.text;
       if (!responseText) throw new Error('No response from Gemini');
       jsonStr = extractJsonFromText(responseText);
     }
@@ -278,10 +426,19 @@ ${content}
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {
-    console.error('analyze-writing error:', e);
-    return new Response(
-      JSON.stringify({ error: e instanceof Error ? e.message : 'Unknown error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    const msg = e instanceof Error ? e.message : 'Unknown error';
+    console.error(
+      JSON.stringify({
+        debugSession: 'a04600',
+        branch: 'catch',
+        event: 'error',
+        message: msg,
+      })
     );
+    console.error('analyze-writing error:', e);
+    return new Response(JSON.stringify({ error: msg }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 });

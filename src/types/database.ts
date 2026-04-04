@@ -102,6 +102,6 @@ export const ACHIEVEMENTS = {
   excellent_writer: { icon: '⭐', name: 'كاتب متميز', description: 'احصل على متوسط 8+' },
   word_master: { icon: '🎯', name: 'دقيق الكلمات', description: 'احصل على 9+ في دقة الكلمات' },
   emotion_master: { icon: '💝', name: 'عميق المشاعر', description: 'احصل على 9+ في عمق المشاعر' },
-  identity_master: { icon: '🔐', name: 'هوية لغوية', description: 'احصل على 9+ في الهوية اللغوية' },
+  identity_master: { icon: '🔐', name: 'هوية لغوية', description: 'احصل على 9+ في الذات اللغوية' },
   path_complete: { icon: '🎓', name: 'أكمل المسار', description: 'أكمل جميع الدروس' },
 } as const;

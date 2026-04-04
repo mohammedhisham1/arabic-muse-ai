@@ -473,7 +473,7 @@ const TeacherDashboard = () => {
                                 icon={Heart}
                               />
                               <ScoreGauge
-                                label="الهوية اللغوية"
+                                label="الذات اللغوية"
                                 value={selectedWriting.evaluation.linguistic_identity}
                                 icon={Fingerprint}
                               />

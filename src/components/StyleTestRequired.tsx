@@ -21,7 +21,7 @@ const StyleTestRequired = () => {
                     </div>
 
                     <h1 className="font-amiri text-3xl font-bold text-foreground mb-3">
-                        اكتشف أسلوبك أولًا!
+                        إكتشف أسلوبك أولًا!
                     </h1>
 
                     <p className="text-muted-foreground mb-8 leading-relaxed">

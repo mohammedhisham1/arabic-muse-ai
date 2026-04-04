@@ -4,7 +4,7 @@ export const programPhases = [
   {
     icon: ClipboardList,
     title: 'اختبار أسلوب الكاتب',
-    description: 'اكتشف أسلوبك الكتابي الفريد من خلال استبيان ذكي يحلل ميولك اللغوية والإبداعية.',
+    description: 'إكتشف أسلوبك الكتابي الفريد من خلال استبيان ذكي يحلل ميولك اللغوية والإبداعية.',
     path: '/style-test',
     color: 'bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground',
   },
@@ -32,7 +32,7 @@ export const programPhases = [
   {
     icon: PenTool,
     title: 'الكتابة الإبداعية الذكية',
-    description: 'محرر نصوص ذكي مع اقتراحات لغوية عاطفية وتقييم فوري بالذكاء الاصطناعي لدقة الكلمات وعمق المشاعر والهوية اللغوية.',
+    description: 'محرر نصوص ذكي مع تقييم فوري بالذكاء الاصطناعي لدقة الكلمات وعمق المشاعر والذات اللغوية.',
     path: '/creative-writing',
     color: 'bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground',
     requiresAuth: true,

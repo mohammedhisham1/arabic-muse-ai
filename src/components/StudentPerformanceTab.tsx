@@ -101,7 +101,7 @@ const StudentPerformanceTab = ({ studentId }: StudentPerformanceTabProps) => {
     const radarData = [
         { skill: 'دقة الكلمات', value: avgScores.word_precision, fullMark: 10 },
         { skill: 'عمق المشاعر', value: avgScores.feeling_depth, fullMark: 10 },
-        { skill: 'الهوية اللغوية', value: avgScores.linguistic_identity, fullMark: 10 },
+        { skill: 'الذات اللغوية', value: avgScores.linguistic_identity, fullMark: 10 },
     ];
 
     const overallAvg = evaluations.length > 0
@@ -164,7 +164,7 @@ const StudentPerformanceTab = ({ studentId }: StudentPerformanceTabProps) => {
                     <p className={`text-2xl font-bold ${scoreColor(avgScores.linguistic_identity)}`}>
                         {avgScores.linguistic_identity.toFixed(1)}
                     </p>
-                    <p className="text-xs text-muted-foreground">الهوية اللغوية</p>
+                    <p className="text-xs text-muted-foreground">الذات اللغوية</p>
                 </motion.div>
             </div>
 

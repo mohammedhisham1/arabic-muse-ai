@@ -41,7 +41,7 @@ const HeroSection = () => {
             transition={{ duration: 0.8, delay: 0.15 }}
             className="mt-6 font-amiri text-4xl font-bold leading-tight text-foreground sm:text-5xl lg:text-6xl"
           >
-            اكتشف اسلوبك الابداعي في اللغة العربية
+            إكتشف أسلوبك الإبداعي في اللغة العربية
           </motion.h1>
 
           <motion.p

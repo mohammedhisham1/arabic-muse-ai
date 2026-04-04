@@ -5,11 +5,91 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import Header from '@/components/Header';
 import ScoreGauge from '@/components/ScoreGauge';
-import EmotionalSuggestions from '@/components/EmotionalSuggestions';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import type { Writing, WritingEvaluation } from '@/types/database';
+
+function collectStringValuesFromJsonishFragment(fragment: string): string {
+  const values: string[] = [];
+  const re = /"[^"]*"\s*:\s*"((?:\\.|[^"\\])*)"/g;
+  let m;
+  while ((m = re.exec(fragment)) !== null) {
+    const inner = m[1]
+      .replace(/\\n/g, '\n')
+      .replace(/\\r/g, '\r')
+      .replace(/\\t/g, '\t')
+      .replace(/\\"/g, '"')
+      .replace(/\\\\/g, '\\');
+    if (inner.trim()) values.push(inner.trim());
+  }
+  return values.join(' ');
+}
+
+/** If the Edge Function returns 500 with `{ error, raw }`, recover Arabic feedback from partial JSON. */
+function scrapeFeedbackFromRaw(raw: unknown): string | null {
+  if (typeof raw !== 'string' || !raw.trim()) return null;
+  const s = raw
+    .replace(/\u201C/g, '"')
+    .replace(/\u201D/g, '"')
+    .replace(/\u201E/g, '"');
+
+  const strOpen = s.match(/"feedback"\s*:\s*"/);
+  if (strOpen && strOpen.index !== undefined) {
+    let i = strOpen.index + strOpen[0].length;
+    let out = '';
+    let escape = false;
+    for (; i < s.length; i++) {
+      const ch = s[i];
+      if (escape) {
+        if (ch === 'n') out += '\n';
+        else if (ch === 't') out += '\t';
+        else if (ch === 'r') out += '\r';
+        else out += ch;
+        escape = false;
+        continue;
+      }
+      if (ch === '\\') {
+        escape = true;
+        continue;
+      }
+      if (ch === '"') break;
+      out += ch;
+    }
+    const t = out.trim();
+    if (t.length > 0) return t;
+  }
+
+  const objOpen = s.match(/"feedback"\s*:\s*\{/);
+  if (objOpen && objOpen.index !== undefined) {
+    const frag = s.slice(objOpen.index + objOpen[0].length);
+    const joined = collectStringValuesFromJsonishFragment(frag);
+    if (joined.trim()) return joined.trim();
+    // Truncated nested object (e.g. "overall_" with no string value yet)
+    return 'لم يكتمل الرد من الخادم. أعد المحاولة بعد لحظات.';
+  }
+
+  return null;
+}
+
+function feedbackFromResponseBody(data: unknown): string | null {
+  if (!data || typeof data !== 'object') return null;
+  const rec = data as Record<string, unknown>;
+  const fb = rec.feedback;
+  if (typeof fb === 'string' && fb.trim()) return fb.trim();
+  if (fb && typeof fb === 'object') {
+    const parts: string[] = [];
+    const walk = (v: unknown): void => {
+      if (typeof v === 'string' && v.trim()) parts.push(v.trim());
+      else if (Array.isArray(v)) v.forEach(walk);
+      else if (v && typeof v === 'object') Object.values(v as object).forEach(walk);
+    };
+    walk(fb);
+    const joined = parts.join(' ');
+    return joined.trim() || null;
+  }
+  return null;
+}
 
 const CreativeWriting = () => {
   const { user } = useAuth();
@@ -148,11 +228,6 @@ const CreativeWriting = () => {
     loadEvaluation(w.id);
   };
 
-  const handleApplySuggestion = (suggestion: string) => {
-    setContent(prev => prev + ' ' + suggestion);
-    toast.success('تم إضافة الاقتراح إلى النص');
-  };
-
   const handleRewriteSubmit = async () => {
     if (!userRewrite.trim()) return;
 
@@ -177,10 +252,78 @@ const CreativeWriting = () => {
         }
       );
 
-      if (!response.ok) throw new Error('فشل تحليل المحاولة');
+      // #region agent log
+      let data: unknown = null;
+      let jsonOk = true;
+      try {
+        data = await response.json();
+      } catch (e) {
+        jsonOk = false;
+        fetch('http://127.0.0.1:7872/ingest/73c9d08f-f40d-4475-ae86-1fe12642a0a9', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'a04600' },
+          body: JSON.stringify({
+            sessionId: 'a04600',
+            runId: 'pre-fix',
+            hypothesisId: 'H4',
+            location: 'CreativeWriting.tsx:handleRewriteSubmit',
+            message: 'response.json failed',
+            data: { status: response.status, err: String(e) },
+            timestamp: Date.now(),
+          }),
+        }).catch(() => {});
+      }
+      const rec = data && typeof data === 'object' ? (data as Record<string, unknown>) : null;
+      const fbDirect = feedbackFromResponseBody(data);
+      const rawStr = rec?.raw;
+      const scraped = scrapeFeedbackFromRaw(rawStr);
+      const feedbackFromBody = fbDirect ?? scraped;
+      const debugPayload = {
+        sessionId: 'a04600',
+        runId: 'iter2',
+        hypothesisId: 'H1-H6',
+        location: 'CreativeWriting.tsx:handleRewriteSubmit',
+        message: 'rewrite_feedback response parsed',
+        data: {
+          supabaseHost: (() => {
+            try {
+              return new URL(import.meta.env.VITE_SUPABASE_URL || 'invalid://').hostname;
+            } catch {
+              return 'invalid-url';
+            }
+          })(),
+          status: response.status,
+          jsonOk,
+          hasRawField: rec ? 'raw' in rec : false,
+          bodyKeys: rec ? Object.keys(rec) : [],
+          errSnippet:
+            typeof rec?.error === 'string' ? rec.error.slice(0, 80) : null,
+          rawType: typeof rawStr,
+          rawLen: typeof rawStr === 'string' ? rawStr.length : null,
+          rawHead: typeof rawStr === 'string' ? rawStr.slice(0, 120) : null,
+          fbDirectLen: fbDirect?.length ?? null,
+          scrapedLen: scraped?.length ?? null,
+          chosenLen: feedbackFromBody?.length ?? null,
+        },
+        timestamp: Date.now(),
+      };
+      console.info('[debug-a04600]', JSON.stringify(debugPayload));
+      fetch('http://127.0.0.1:7872/ingest/73c9d08f-f40d-4475-ae86-1fe12642a0a9', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Debug-Session-Id': 'a04600' },
+        body: JSON.stringify(debugPayload),
+      }).catch(() => {});
+      // #endregion
 
-      const data = await response.json();
-      setRewriteFeedback(data.feedback);
+      if (!jsonOk) {
+        throw new Error('فشل تحليل المحاولة');
+      }
+      if (!feedbackFromBody) {
+        throw new Error(
+          typeof rec?.error === 'string' ? rec.error : 'فشل تحليل المحاولة'
+        );
+      }
+      setRewriteFeedback(feedbackFromBody);
 
       const next = rewriteAttempts + 1;
       setRewriteAttempts(next);
@@ -209,10 +352,10 @@ const CreativeWriting = () => {
             المرحلة الخامسة — الكتابة الإبداعية
           </span>
           <h1 className="mt-4 font-amiri text-3xl font-bold text-foreground">محرر الكتابة الذكي</h1>
-          <p className="mt-2 text-muted-foreground">اكتب نصك الإبداعي واحصل على تحليل فوري واقتراحات لغوية عاطفية</p>
+          <p className="mt-2 text-muted-foreground">اكتب نصك الإبداعي واحصل على تحليل فوري وتقييم ذكي لنصك</p>
         </div>
 
-        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-4">
+        <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-3">
           {/* Sidebar - Previous writings */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -336,7 +479,7 @@ const CreativeWriting = () => {
                 <div className="flex flex-wrap justify-center gap-8">
                   <ScoreGauge label="دقة الكلمات" value={evaluation.word_precision} icon={Target} />
                   <ScoreGauge label="عمق المشاعر" value={evaluation.feeling_depth} icon={Heart} />
-                  <ScoreGauge label="الهوية اللغوية" value={evaluation.linguistic_identity} icon={Fingerprint} />
+                  <ScoreGauge label="الذات اللغوية" value={evaluation.linguistic_identity} icon={Fingerprint} />
                 </div>
 
                 {/* Feedback */}
@@ -470,19 +613,6 @@ const CreativeWriting = () => {
                 )}
               </motion.div>
             )}
-          </motion.div>
-
-          {/* Right Sidebar - Emotional Suggestions */}
-          <motion.div
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="lg:col-span-1"
-          >
-            <EmotionalSuggestions
-              content={content}
-              style={writingStyle}
-              onApplySuggestion={handleApplySuggestion}
-            />
           </motion.div>
         </div>
       </main>

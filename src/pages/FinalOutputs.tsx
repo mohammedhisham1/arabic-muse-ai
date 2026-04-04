@@ -62,14 +62,14 @@ const FinalOutputs = () => {
       name: w.title.slice(0, 12) + (w.title.length > 12 ? '...' : ''),
       'دقة الكلمات': evaluation ? Number(evaluation.word_precision) : 0,
       'عمق المشاعر': evaluation ? Number(evaluation.feeling_depth) : 0,
-      'الهوية اللغوية': evaluation ? Number(evaluation.linguistic_identity) : 0,
+      'الذات اللغوية': evaluation ? Number(evaluation.linguistic_identity) : 0,
     };
   });
 
   const radarData = [
     { skill: 'دقة الكلمات', value: avgScore('word_precision'), fullMark: 10 },
     { skill: 'عمق المشاعر', value: avgScore('feeling_depth'), fullMark: 10 },
-    { skill: 'الهوية اللغوية', value: avgScore('linguistic_identity'), fullMark: 10 },
+    { skill: 'الذات اللغوية', value: avgScore('linguistic_identity'), fullMark: 10 },
   ];
 
   const overallAvg = (avgScore('word_precision') + avgScore('feeling_depth') + avgScore('linguistic_identity')) / 3;
@@ -144,7 +144,7 @@ const FinalOutputs = () => {
               { label: 'عدد الكتابات', value: writings.length, icon: BookOpen, color: 'text-primary' },
               { label: 'متوسط دقة الكلمات', value: avgScore('word_precision').toFixed(1), icon: Target, color: 'text-primary' },
               { label: 'متوسط عمق المشاعر', value: avgScore('feeling_depth').toFixed(1), icon: Heart, color: 'text-accent' },
-              { label: 'متوسط الهوية اللغوية', value: avgScore('linguistic_identity').toFixed(1), icon: Fingerprint, color: 'text-primary' },
+              { label: 'متوسط الذات اللغوية', value: avgScore('linguistic_identity').toFixed(1), icon: Fingerprint, color: 'text-primary' },
             ].map(({ label, value, icon: Icon, color }, idx) => (
               <motion.div
                 key={label}
@@ -212,7 +212,7 @@ const FinalOutputs = () => {
                 <p className="text-sm text-muted-foreground mt-2">
                   {profile?.writing_style
                     ? `أسلوبك الكتابي: ${profile.writing_style}. تم تخصيص مسار التعلم وفقًا لخصائصك الإبداعية الفريدة.`
-                    : 'اكتشف أسلوبك الكتابي عبر اختبار الأسلوب لتخصيص تجربتك التعليمية.'}
+                    : 'إكتشف أسلوبك الكتابي عبر اختبار الأسلوب لتخصيص تجربتك التعليمية.'}
                 </p>
               </motion.div>
 
@@ -275,7 +275,7 @@ const FinalOutputs = () => {
                   <Legend />
                   <Bar dataKey="دقة الكلمات" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="عمق المشاعر" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="الهوية اللغوية" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="الذات اللغوية" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </motion.div>

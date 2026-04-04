@@ -126,7 +126,7 @@ const TeacherMessages = () => {
         }
     };
 
-    const replyTo = (senderId?: string) => {
+    const replyToDirectMessage = (senderId?: string) => {
         if (!senderId) return;
         setOpen(false);
         navigate(`/student-chat?teacher=${encodeURIComponent(senderId)}`);
@@ -135,6 +135,10 @@ const TeacherMessages = () => {
     const getTypeLabel = (type: string | undefined) => {
         if (!type) return 'رسالة';
         switch (type) {
+            case 'note': return 'ملاحظة';
+            case 'exercise': return 'تمرين مقترح';
+            case 'warning': return 'تنبيه';
+            case 'tip': return 'نصيحة';
             case 'suggestion': return 'اقتراح';
             case 'praise': return 'تشجيع';
             case 'correction': return 'تصحيح';
@@ -144,6 +148,9 @@ const TeacherMessages = () => {
 
     const getTypeColor = (type: string | undefined) => {
         switch (type) {
+            case 'exercise': return 'text-blue-600 bg-blue-50';
+            case 'warning': return 'text-amber-600 bg-amber-50';
+            case 'tip': return 'text-violet-600 bg-violet-50';
             case 'suggestion': return 'text-blue-600 bg-blue-50';
             case 'praise': return 'text-green-600 bg-green-50';
             case 'correction': return 'text-amber-600 bg-amber-50';
@@ -199,17 +206,23 @@ const TeacherMessages = () => {
                                     </div>
 
                                     <div className="flex items-center justify-between gap-2 mt-1">
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
-                                            onClick={() => replyTo(msg.sender_id)}
-                                            disabled={!msg.sender_id}
-                                        >
-                                            <CornerUpLeft className="h-3.5 w-3.5 ml-1" />
-                                            رد
-                                        </Button>
-                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium ${getTypeColor(msg.intervention_type)}`}>
+                                        {msg.type === 'message' ? (
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+                                                onClick={() => replyToDirectMessage(msg.sender_id)}
+                                                disabled={!msg.sender_id}
+                                            >
+                                                <CornerUpLeft className="h-3.5 w-3.5 ml-1" />
+                                                رد في المحادثة
+                                            </Button>
+                                        ) : (
+                                            <span className="text-[10px] leading-snug text-muted-foreground max-w-[58%]">
+                                                من التدخلات — للاطلاع فقط. الرد متاح عند استلام رسالة خاصة من المعلم.
+                                            </span>
+                                        )}
+                                        <span className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-medium ${msg.type === 'intervention' ? getTypeColor(msg.intervention_type) : 'text-muted-foreground bg-muted'}`}>
                                             {msg.type === 'intervention' ? getTypeLabel(msg.intervention_type) : 'رسالة خاصة'}
                                         </span>
                                     </div>
