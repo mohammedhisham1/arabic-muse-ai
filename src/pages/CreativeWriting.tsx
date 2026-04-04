@@ -546,22 +546,11 @@ const CreativeWriting = () => {
                       </p>
                     )}
 
-                    {evaluation.improved_text?.trim() && !showAIResult && (
-                      <div className="rounded-lg border border-dashed border-primary/40 bg-background p-4 mb-4">
-                        <p className="text-xs font-bold text-primary mb-2">
-                          مثال للنص بعد تطبيق الملاحظات والاقتراحات
-                        </p>
-                        <p className="text-sm leading-[2] text-foreground whitespace-pre-line">
-                          {evaluation.improved_text}
-                        </p>
-                      </div>
-                    )}
-
                     {!showAIResult && (
                       <div className="space-y-4 mb-4">
                         <p className="text-sm text-muted-foreground leading-relaxed">
                           {evaluation.improved_text?.trim()
-                            ? 'المرجع أعلاه يوضّح أحد أشكال النص بعد تطبيق التعديلات. قارن ثم جرّب صياغتك الخاصة.'
+                            ? 'لديك فرصة لتحسين النص بنفسك بناءً على الملاحظات قبل رؤية اقتراح الذكاء الاصطناعي الكامل.'
                             : 'لديك محاولتان لإعادة صياغة النص بما يتوافق مع مرجع التقرير (الملاحظات والاقتراحات).'}
                           <br />
                           <span className="font-bold text-primary">المحاولات المتبقية: {2 - rewriteAttempts}</span>
