@@ -142,7 +142,7 @@ const buildFallbackEvaluation = (args: { title?: string; content: string; style?
 
   const improved_text = isTooShort
     ? 'في مساءٍ هادئ، جلستُ قرب النافذة أراقب الضوء وهو ينسحب ببطء من فوق الجدار. لم يكن السؤال في رأسي مجرد كلمات، بل ارتجافة صغيرة في القلب: ماذا لو تأخرتُ خطوة واحدة؟'
-    : null;
+    : text; // استخدم النص الأصلي كأساس عند فشل نموذج التقييم الرئيسي
 
   return {
     word_precision,
@@ -250,6 +250,65 @@ serve(async (req) => {
         text: cand?.content?.parts?.[0]?.text as string | undefined,
         finishReason: cand?.finishReason as string | undefined,
       };
+    };
+
+    const strictJsonOnly = `\n\nقواعد إخراج صارمة:\n- أعد JSON فقط بدون أي Markdown.\n- لا تستخدم \`\`\`.\n- لا تضف أي نص خارج JSON.\n`;
+
+    /** طلب ثانٍ يركّز على مثال النص المحسّن الكامل عندما يحذفه النموذج الأول أو يختصره */
+    const ensureImprovedTextSample = async (args: {
+      content: string;
+      title?: string;
+      style?: string;
+      feedback: string;
+      suggestions: string;
+    }): Promise<string> => {
+      const promptFill = `أنت محرر عربي للنصوص الإبداعية.
+
+أعد صياغة «النص الأصلي» بالكامل داخل improved_text: طبّق عملياً ملاحظات المراجعة واقتراحات التحسين، مع الحفاظ على المعنى والصوت الشخصي للكاتب. يجب أن يكون improved_text النص كاملاً من أول كلمة لآخرها (وليس ملخصاً ولا تعليقاً قصيراً).
+
+العنوان: ${args.title || '—'}
+الأسلوب: ${args.style || '—'}
+
+ملاحظات المراجعة:
+${args.feedback || '—'}
+
+اقتراحات التحسين:
+${args.suggestions || '—'}
+
+النص الأصلي:
+${args.content}
+
+أجب JSON فقط بهذا الشكل:
+{"improved_text":"..."}`;
+
+      let g = await callGemini(
+        promptFill + strictJsonOnly + '- مفتاح واحد فقط: improved_text.\n',
+        2,
+        3072
+      );
+      let txt = normalizeAiQuotes(g.text ?? '');
+      let j = extractJsonFromText(txt);
+      if ((!j || g.finishReason === 'MAX_TOKENS') && args.content.length < 8000) {
+        const g2 = await callGemini(
+          promptFill +
+            strictJsonOnly +
+            '- improved_text إلزامي ويشمل كامل النص المعاد صياغته دون اختصار يلغي الفقرات.\n',
+          2,
+          4096
+        );
+        txt = normalizeAiQuotes(g2.text ?? '');
+        j = extractJsonFromText(txt);
+      }
+      if (j) {
+        try {
+          const o = JSON.parse(normalizeAiQuotes(j));
+          const im = typeof o.improved_text === 'string' ? o.improved_text.trim() : '';
+          if (im.length >= 15) return im;
+        } catch {
+          /* ignore */
+        }
+      }
+      return args.content.trim();
     };
 
     if (mode === 'rewrite_feedback') {
@@ -378,15 +437,17 @@ ${content}
   "improved_text": "<النص كاملًا بعد تطبيق التحسينات والتصحيحات اللغوية والأسلوبية، مع الحفاظ على صوت الكاتب الأصلي>"
 }`;
 
-    const strict = `\n\nقواعد إخراج صارمة:\n- أعد JSON فقط بدون أي Markdown.\n- لا تستخدم \`\`\`.\n- لا تضف أي نص خارج JSON.\n`;
+    const strict =
+      strictJsonOnly +
+      `- حقل improved_text إلزامي دائماً: اكتب النص المعاد صياغته كاملاً (نفس طول النص الأصلي تقريباً)، حتى لو كان التقييم مرتفعاً؛ طبّق التحسينات الطفيفة صراحة ولا تترك الحقل فارغاً ولا تكتفي بجملة مثل «النص جيد».\n`;
 
-    let gEval = await callGemini(prompt + strict, 1, 2048);
+    let gEval = await callGemini(prompt + strict, 1, 3072);
     let responseText = gEval.text;
     if (!responseText) throw new Error('No response from Gemini');
 
     let jsonStr = extractJsonFromText(responseText);
     if (!jsonStr || gEval.finishReason === 'MAX_TOKENS') {
-      const gEval2 = await callGemini(prompt + strict + '\nأعد نفس الكائن لكن بإيجاز.', 2, 1200);
+      const gEval2 = await callGemini(prompt + strict + '\nأعد نفس الكائن لكن بإيجاز.', 2, 2048);
       responseText = gEval2.text;
       if (!responseText) throw new Error('No response from Gemini');
       jsonStr = extractJsonFromText(responseText);
@@ -406,6 +467,31 @@ ${content}
       evaluation = buildFallbackEvaluation({ title, content, style });
     }
 
+    const cTrim = content.trim();
+    const fb0 = String(evaluation.feedback ?? '').trim() || 'راعِ الوضوح والسلاسة اللغوية.';
+    const sg0 = String(evaluation.suggestions ?? '').trim() || 'حسّن الصياغة مع الإبقاء على المعنى.';
+    let imp0 = typeof evaluation.improved_text === 'string' ? evaluation.improved_text.trim() : '';
+
+    const minImprovedLen = Math.max(
+      40,
+      Math.min(Math.floor(cTrim.length * 0.28), 4000)
+    );
+    const tooShortOrMissing =
+      !imp0 || imp0.length < minImprovedLen || imp0 === fb0 || imp0 === sg0;
+
+    if (tooShortOrMissing && cTrim.length > 0) {
+      imp0 = await ensureImprovedTextSample({
+        content,
+        title,
+        style,
+        feedback: fb0,
+        suggestions: sg0,
+      });
+      evaluation.improved_text = imp0;
+    } else {
+      evaluation.improved_text = imp0 || cTrim;
+    }
+
     const { data: evalData, error: evalError } = await supabaseAdmin
       .from('writing_evaluations')
       .insert({
@@ -415,7 +501,7 @@ ${content}
         linguistic_identity: Math.min(10, Math.max(0, Number(evaluation.linguistic_identity))),
         feedback: evaluation.feedback,
         suggestions: evaluation.suggestions,
-        improved_text: evaluation.improved_text || null,
+        improved_text: evaluation.improved_text ?? null,
       })
       .select()
       .single();
