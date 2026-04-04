@@ -91,6 +91,20 @@ function feedbackFromResponseBody(data: unknown): string | null {
   return null;
 }
 
+/** مرجع مقارنة المحاولات: النص المحسّن إن وُجد، وإلا الملاحظات+الاقتراحات، وإلا النص الأصلي */
+function buildRewriteTargetText(
+  evaluation: WritingEvaluation | null,
+  originalContent: string
+): string {
+  const base = originalContent.trim();
+  if (!evaluation) return base;
+  const improved = evaluation.improved_text?.trim();
+  if (improved) return improved;
+  const fromReport = [evaluation.feedback, evaluation.suggestions].filter(Boolean).join('\n\n').trim();
+  if (fromReport) return fromReport;
+  return base;
+}
+
 const CreativeWriting = () => {
   const { user } = useAuth();
   const [title, setTitle] = useState('');
@@ -235,6 +249,12 @@ const CreativeWriting = () => {
     setRewriteFeedback(null);
 
     try {
+      const targetText = buildRewriteTargetText(evaluation, content);
+      if (!targetText.trim()) {
+        toast.error('لا يوجد نص أو تقرير للمقارنة');
+        return;
+      }
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/analyze-writing`,
         {
@@ -246,7 +266,7 @@ const CreativeWriting = () => {
           body: JSON.stringify({
             mode: 'rewrite_feedback',
             content: userRewrite,
-            targetText: evaluation?.improved_text,
+            targetText,
             originalText: content
           }),
         }
@@ -331,7 +351,11 @@ const CreativeWriting = () => {
 
       if (next >= 2) {
         setShowAIResult(true);
-        toast.info('تم استلام تقييم المحاولة الأخيرة وإظهار النص المحسن');
+        toast.info(
+          evaluation?.improved_text?.trim()
+            ? 'تم استلام تقييم المحاولة الأخيرة وإظهار النص المقترح'
+            : 'تم استلام تقييم المحاولة الأخيرة — راجع ملاحظات التقرير أعلاه'
+        );
       }
     } catch (error) {
       console.error(error);
@@ -508,18 +532,26 @@ const CreativeWriting = () => {
                   </div>
                 )}
 
-                {/* Improved Text with Challenge */}
-                {evaluation.improved_text && (
-                  <div className="rounded-xl bg-primary/5 border border-primary/20 p-5">
-                    <h4 className="font-bold text-foreground flex items-center gap-2 mb-4">
+                {/* Rewrite challenge: يظهر دائماً بعد التقييم (حتى لو لم يُولَّد improved_text) */}
+                <div className="rounded-xl bg-primary/5 border border-primary/20 p-5">
+                    <h4 className="font-bold text-foreground flex items-center gap-2 mb-2">
                       <Sparkles className="h-4 w-4 text-primary" />
-                      النص المحسّن
+                      {evaluation.improved_text?.trim()
+                        ? 'النص المحسّن (مرجع التدريب)'
+                        : 'تمرين إعادة الصياغة'}
                     </h4>
+                    {!evaluation.improved_text?.trim() && (
+                      <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
+                        حتى مع نص قوي، جرّب صياغة أدقّ تلتزم بملاحظات التقرير. تُقارن محاولتك بملخص الملاحظات والاقتراحات.
+                      </p>
+                    )}
 
                     {!showAIResult && (
-                      <div className="space-y-4">
+                      <div className="space-y-4 mb-4">
                         <p className="text-sm text-muted-foreground leading-relaxed">
-                          لديك فرصة لتحسين النص بنفسك بناءً على الملاحظات قبل رؤية اقتراح الذكاء الاصطناعي.
+                          {evaluation.improved_text?.trim()
+                            ? 'لديك فرصة لتحسين النص بنفسك بناءً على الملاحظات قبل رؤية اقتراح الذكاء الاصطناعي الكامل.'
+                            : 'لديك محاولتان لإعادة صياغة النص بما يتوافق مع مرجع التقرير (الملاحظات والاقتراحات).'}
                           <br />
                           <span className="font-bold text-primary">المحاولات المتبقية: {2 - rewriteAttempts}</span>
                         </p>
@@ -543,7 +575,9 @@ const CreativeWriting = () => {
                         className="w-full border-dashed border-2"
                       >
                         <PenTool className="h-4 w-4 mr-2" />
-                        محاولة إعادة كتابة النص المحسن
+                        {evaluation.improved_text?.trim()
+                          ? 'محاولة إعادة كتابة النص المقترح'
+                          : 'ابدأ محاولات إعادة الصياغة'}
                       </Button>
                     ) : (
                       <div className="space-y-3 mt-4">
@@ -583,34 +617,45 @@ const CreativeWriting = () => {
                         animate={{ opacity: 1, scale: 1 }}
                         className="space-y-3 mt-8 pt-6 border-t-2 border-dashed border-border"
                       >
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded">
-                            اقتراح الذكاء الاصطناعي (النموذج)
-                          </span>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="text-xs gap-1"
-                            onClick={() => {
-                              navigator.clipboard.writeText(evaluation.improved_text || '');
-                              toast.success('تم نسخ النص المحسّن');
-                            }}
-                          >
-                            نسخ النص
-                          </Button>
-                        </div>
-                        <div className="rounded-lg bg-background border border-border p-4">
-                          <p className="text-sm leading-[2] text-foreground whitespace-pre-line font-medium">
-                            {evaluation.improved_text}
-                          </p>
-                        </div>
-                        <p className="text-xs text-center text-muted-foreground mt-2">
-                          قارن بين محاولتك أعلاه وهذا الاقتراح لتعزيز تعلمك
-                        </p>
+                        {evaluation.improved_text?.trim() ? (
+                          <>
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-xs font-bold text-primary bg-primary/10 px-2 py-1 rounded">
+                                اقتراح الذكاء الاصطناعي (النموذج)
+                              </span>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-xs gap-1"
+                                onClick={() => {
+                                  navigator.clipboard.writeText(evaluation.improved_text || '');
+                                  toast.success('تم نسخ النص المحسّن');
+                                }}
+                              >
+                                نسخ النص
+                              </Button>
+                            </div>
+                            <div className="rounded-lg bg-background border border-border p-4">
+                              <p className="text-sm leading-[2] text-foreground whitespace-pre-line font-medium">
+                                {evaluation.improved_text}
+                              </p>
+                            </div>
+                            <p className="text-xs text-center text-muted-foreground mt-2">
+                              قارن بين محاولتك أعلاه وهذا الاقتراح لتعزيز تعلمك
+                            </p>
+                          </>
+                        ) : (
+                          <div className="rounded-lg bg-muted/40 border border-border p-4 text-center space-y-2">
+                            <p className="text-sm font-medium text-foreground">أحسنت بإنهاء المحاولات</p>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              لم يُولَّد نص مقترح كاملاً لهذا التقييم؛ راجع ملاحظات التقرير واقتراحات التحسين أعلاه
+                              ومقارنتها بمحاولتك الأخيرة.
+                            </p>
+                          </div>
+                        )}
                       </motion.div>
                     )}
                   </div>
-                )}
               </motion.div>
             )}
           </motion.div>
